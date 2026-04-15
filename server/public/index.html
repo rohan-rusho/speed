@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAN File Server</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    
+    <!-- Plyr Custom Video Player CSS -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    
+    <!-- Plyr Fullscreen Overrides -->
+    <style>
+        /* When Plyr enters fullscreen, fill the entire screen */
+        .plyr--fullscreen-fallback,
+        .plyr--fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            max-height: none !important;
+            background: #000 !important;
+        }
+        .plyr--fullscreen video,
+        .plyr--fullscreen-fallback video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
+        }
+        .plyr--fullscreen .plyr__video-wrapper,
+        .plyr--fullscreen-fallback .plyr__video-wrapper {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        /* Media container should fill the modal */
+        #media-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+        #media-container .plyr,
+        #media-container .plyr__video-wrapper {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            aspect-ratio: auto !important;
+            max-height: none !important;
+            max-width: none !important;
+            border-radius: 0 !important;
+        }
+        #media-container video {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            max-height: none !important;
+            max-width: none !important;
+        }
+        #media-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+    </style>
+    
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- Phosphor Icons for modern slick icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body
+    class="bg-dark-bg text-gray-100 min-h-screen transition-colors duration-200 antialiased selection:bg-brand-cyan selection:text-white pb-20 md:pb-0 font-sans relative">
+
+    <!-- Premium Full-Page Background Glow -->
+    <div class="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+        <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-[#523cbd] blur-[140px] opacity-20 rounded-full animate-pulse mix-blend-screen mix-blend-plus-lighter shadow-2xl"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-brand-cyan blur-[160px] opacity-[0.15] rounded-full animate-pulse blur-[140px] mix-blend-screen" style="animation-delay: 2s;"></div>
+    </div>
+
+    <!-- Global Preloader -->
+    <div id="global-preloader"
+        class="fixed inset-0 bg-dark-bg z-[100] flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="relative w-24 h-24 mb-4">
+            <!-- Pulsing background blur -->
+            <div class="absolute inset-0 bg-brand-cyan blur-xl opacity-20 rounded-full animate-pulse"></div>
+            <!-- Spinning gradient ring -->
+            <div
+                class="absolute inset-0 rounded-full border-4 border-transparent border-t-brand-cyan border-r-brand-purple animate-spin">
+            </div>
+            <!-- Inner static icon -->
+            <div class="absolute inset-0 flex items-center justify-center text-white">
+                <i class="ph-fill ph-wifi-high text-4xl"></i>
+            </div>
+        </div>
+        <h2
+            class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-cyan to-brand-purple animate-pulse">
+            Connecting...</h2>
+    </div>
+
+    <!-- Setup View (Unchanged logically, updated styling) -->
+    <div id="setup-view" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="bg-dark-card p-8 rounded-2xl shadow-2xl w-full max-w-md border border-dark-border">
+            <h1 class="text-2xl font-bold mb-2 flex items-center gap-2">
+                <i class="ph-fill ph-hard-drives text-brand-cyan"></i> Server Setup
+            </h1>
+            <p class="text-gray-400 mb-6 text-sm">Please configure the root directory to share over
+                your LAN.</p>
+
+            <form id="setup-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-300">Root Directory Path</label>
+                    <input type="text" id="root-dir-input" placeholder="e.g. D:\Movies"
+                        class="w-full px-4 py-2 rounded-lg bg-dark-bg border border-dark-border focus:ring-2 focus:ring-brand-cyan focus:border-transparent outline-none transition-all text-white">
+                </div>
+                <button type="submit"
+                    class="w-full bg-brand-purple hover:bg-brand-purple/90 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <i class="ph ph-check-circle"></i> Save & Start
+                </button>
+                <button type="button" id="setup-cancel"
+                    class="hidden w-full bg-dark-border hover:bg-gray-700 text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <i class="ph ph-x"></i> Cancel
+                </button>
+            </form>
+            <div id="setup-error" class="text-red-500 text-sm mt-4 hidden"></div>
+        </div>
+    </div>
+
+    <!-- Main App View -->
+    <div id="app-view" class="hidden flex flex-col min-h-screen">
+
+        <!-- Header / Logo Area -->
+        <header class="bg-dark-bg/95 backdrop-blur-md sticky top-0 border-b border-dark-border z-40">
+            <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 w-full">
+                <div class="flex items-center justify-between">
+                    <!-- Branding -->
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="loadFiles('/')">
+                        <div class="w-10 h-10 rounded-full bg-brand-cyan/20 flex items-center justify-center text-brand-cyan shadow-lg shadow-brand-cyan/20">
+                            <i class="ph-fill ph-hard-drives text-2xl"></i>
+                        </div>
+                        <h1 class="text-xl font-bold tracking-wide flex items-center">
+                            <span class="text-white">Rusho&nbsp;</span><span class="text-brand-purple">Server</span>
+                        </h1>
+                    </div>
+
+                    <!-- Right side Actions -->
+                    <div class="flex items-center gap-4">
+                        <button id="settings-toggle" class="w-10 h-10 rounded-full bg-dark-card border border-dark-border text-gray-400 hover:text-white hover:border-white/20 hover:shadow-lg flex items-center justify-center transition-all">
+                            <i class="ph-bold ph-gear text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <div class="w-full pt-16 pb-20 relative overflow-hidden">
+            <!-- Deep Space Blurry Background Bubbles (#523cbd) -->
+            <div class="absolute -top-40 left-0 md:-left-20 w-[600px] h-[600px] bg-[#523cbd] blur-[150px] opacity-30 rounded-full pointer-events-none mix-blend-screen"></div>
+            <div class="absolute -top-20 right-0 md:-right-20 w-[500px] h-[500px] bg-brand-cyan blur-[130px] opacity-10 rounded-full pointer-events-none mix-blend-screen"></div>
+            <div class="absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-5xl h-64 bg-[#523cbd] blur-[140px] opacity-20 rounded-full pointer-events-none mix-blend-screen"></div>
+            
+            <div class="max-w-4xl mx-auto px-4 text-center relative z-10">
+                <!-- Top pill -->
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md mb-8">
+                    <span class="text-brand-cyan font-bold text-sm">⚡ High-Speed</span>
+                    <span class="text-gray-400 text-sm font-medium">Local Network</span>
+                </div>
+
+                <!-- Main Title -->
+                <h2 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
+                    <span class="text-white">Premium </span><span class="text-brand-cyan">File </span><span class="text-brand-purple">Center</span>
+                </h2>
+                
+                <!-- Subtitle -->
+                <p class="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
+                    Browse, upload, and download files instantly across your personalized home network.
+                </p>
+
+                <!-- Action / Search Bar -->
+                <div class="relative w-full max-w-2xl mx-auto flex group">
+                    <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-gray-500 group-focus-within:text-brand-cyan transition-colors">
+                        <i class="ph-bold ph-magnifying-glass text-2xl"></i>
+                    </div>
+                    <input type="text" id="search-input" placeholder="Search files, folders, or extensions..."
+                        class="w-full pl-14 pr-4 py-4 md:py-5 bg-dark-card border border-white/10 hover:border-white/20 focus:border-brand-cyan focus:ring-2 focus:ring-brand-cyan/30 rounded-full transition-all text-white placeholder-gray-500 shadow-xl shadow-black/50 outline-none font-medium text-lg text-left">
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters and Breadcrumbs -->
+        <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2">
+
+            <!-- Breadcrumbs -->
+            <div class="bg-dark-card border border-dark-border rounded-xl p-3 mb-6 flex items-center gap-2 overflow-x-auto no-scrollbar"
+                id="breadcrumbs">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Category and View Toolbar -->
+            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
+                <!-- Categories -->
+                <div class="flex flex-wrap items-center gap-2 md:gap-3" id="category-filters">
+                    <button class="filter-chip active" data-filter="all"><i class="ph ph-squares-four mr-1"></i> All</button>
+                    <button class="filter-chip" data-filter="folders"><i class="ph ph-folder mr-1"></i> Folders</button>
+                    <button class="filter-chip" data-filter="windows"><i class="ph ph-windows-logo mr-1"></i> Windows</button>
+                    <button class="filter-chip" data-filter="android"><i class="ph ph-android-logo mr-1"></i> Android</button>
+                    <button class="filter-chip" data-filter="media"><i class="ph ph-play-circle mr-1"></i> Media</button>
+                    <button class="filter-chip" data-filter="docs"><i class="ph ph-file-text mr-1"></i> Docs</button>
+                    <button class="filter-chip" data-filter="archives"><i class="ph ph-file-zip mr-1"></i> Archives</button>
+                </div>
+
+                <!-- Right Controls: Upload, Sort, View -->
+                <div class="flex flex-wrap items-center gap-3 shrink-0">
+                    <!-- Hidden File Input -->
+                    <input type="file" id="upload-input" class="hidden" multiple>
+
+                    <!-- Upload Button -->
+                    <button id="upload-btn" class="bg-brand-purple hover:bg-brand-purple/90 text-white shadow-lg shadow-brand-purple/30 text-sm font-medium rounded-lg px-4 py-2 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5" title="Upload files to this directory">
+                        <i class="ph-bold ph-upload-simple text-lg"></i> Upload
+                    </button>
+
+                    <!-- Divider -->
+                    <div class="hidden sm:block w-px h-8 bg-dark-border"></div>
+
+                    <!-- Sort -->
+                    <select id="sort-select" class="bg-dark-card border border-dark-border text-sm rounded-lg px-3 py-2 text-gray-300 focus:outline-none focus:border-brand-cyan">
+                        <option value="name">Sort by Name</option>
+                        <option value="size">Sort by Size</option>
+                        <option value="date">Sort by Date</option>
+                    </select>
+
+                    <!-- View Toggle -->
+                    <div class="flex items-center bg-dark-card rounded-lg p-1 border border-dark-border">
+                        <button data-view="grid" class="view-toggle active w-8 h-8 rounded shrink-0 flex items-center justify-center text-brand-cyan transition-colors" title="Grid View">
+                            <i class="ph-fill ph-squares-four text-xl"></i>
+                        </button>
+                        <button data-view="list" class="view-toggle w-8 h-8 rounded shrink-0 flex items-center justify-center text-gray-500 transition-colors" title="List View">
+                            <i class="ph-fill ph-list-dashes text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main File Grid/List -->
+            <div id="file-container"
+                class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 pb-24">
+                <!-- Initial Loading state -->
+                <div class="col-span-full flex justify-center py-20 text-gray-500">
+                    <div class="animate-spin text-3xl"><i class="ph ph-circle-notch"></i></div>
+                </div>
+        </div>
+    </div> <!-- End of App View -->
+
+    <!-- Media Player Modal -->
+    <div id="media-modal"
+        class="fixed inset-0 hidden flex flex-col overflow-hidden" style="z-index: 9999; background: #000 !important;">
+        
+        <!-- Header Controls -->
+        <div class="absolute top-0 left-0 right-0 p-6 flex items-start justify-between" style="z-index: 10000;">
+            <div class="flex items-center gap-4">
+                <button id="close-modal" class="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 hover:bg-red-500 text-white flex items-center justify-center transition-all shadow-2xl cursor-pointer" style="pointer-events: auto !important;" title="Close (Esc)">
+                    <i class="ph-bold ph-x text-xl"></i>
+                </button>
+                <div class="flex flex-col">
+                    <h2 id="media-title" class="font-bold text-white text-lg drop-shadow-xl truncate max-w-md">Media File</h2>
+                    <span id="media-counter" class="text-xs text-brand-cyan font-bold tracking-widest uppercase drop-shadow-xl hidden">1 / 1</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <a id="media-download" href="#" download class="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 hover:bg-brand-cyan text-white flex items-center justify-center transition-all shadow-2xl" style="pointer-events: auto !important;" title="Download Source">
+                    <i class="ph-bold ph-download-simple text-xl"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Navigation Arrows (Floating) -->
+        <button id="media-prev" class="hidden absolute top-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-black/40 backdrop-blur-md border border-white/5 hover:bg-brand-purple hover:border-brand-purple/50 text-white flex items-center justify-center transition-all z-50 group shadow-2xl" style="left: 1.5rem;">
+            <i class="ph-bold ph-caret-left text-3xl group-hover:-translate-x-1 transition-transform"></i>
+        </button>
+        <button id="media-next" class="hidden absolute top-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-black/40 backdrop-blur-md border border-white/5 hover:bg-brand-purple hover:border-brand-purple/50 text-white flex items-center justify-center transition-all z-50 group shadow-2xl" style="right: 1.5rem; left: auto;">
+            <i class="ph-bold ph-caret-right text-3xl group-hover:translate-x-1 transition-transform"></i>
+        </button>
+        
+        <div class="flex-1 w-full h-full flex items-center justify-center min-h-0 relative z-10" id="media-container">
+            <!-- Media content injected by JS -->
+        </div>
+    </div>
+
+    <!-- Upload Progress Modal/Toast (Sticky Bottom) -->
+    <div id="upload-progress-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-lg z-[60] hidden">
+        <div class="bg-dark-card border border-brand-cyan/50 rounded-xl shadow-2xl p-4 transform transition-all">
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-2 font-bold text-white text-sm">
+                    <i class="ph-fill ph-upload-simple text-brand-cyan animate-bounce"></i>
+                    <span id="upload-status-text">Uploading files...</span>
+                </div>
+                <div id="upload-percentage" class="text-brand-cyan/80 font-bold">0%</div>
+            </div>
+            <!-- Progress Bar Track -->
+            <div class="w-full bg-dark-bg rounded-full h-2.5 mb-2 overflow-hidden border border-dark-border">
+                <div id="upload-progress-bar" class="bg-gradient-to-r from-brand-cyan to-brand-purple h-2.5 rounded-full" style="width: 0%; transition: width 0.3s ease;"></div>
+            </div>
+            <!-- Stats -->
+            <div class="flex justify-between text-xs text-gray-400">
+                <span id="upload-size-text">0 MB / 0 MB</span>
+                <span id="upload-speed-text">0 MB/s</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- Plyr Custom Video Player JS -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    <script src="js/app.js?v=8"></script>
+</body>
+</html>
