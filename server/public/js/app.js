@@ -89,6 +89,17 @@ let currentMediaIndex = -1;
 let baseFolderFiles = [];
 let searchTimeout;
 
+// Global File Type Categories mapping
+const icons = {
+    video: ['mp4', 'mkv', 'avi', 'mov', 'webm'],
+    audio: ['mp3', 'wav', 'ogg', 'm4a', 'flac'],
+    image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
+    pdf: ['pdf'],
+    archive: ['zip', 'rar', '7z', 'tar', 'gz'],
+    code: ['js', 'json', 'html', 'css', 'ts', 'py', 'java', 'xml', 'php'],
+    doc: ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'md', 'csv']
+};
+
 // Initialize
 async function init() {
     initTheme();
@@ -247,16 +258,10 @@ function showPrevMedia() {
 // File Loading & Rendering
 async function loadFiles(dirPath) {
     try {
-        // Show a glorious custom smooth loader as requested
-        fileContainer.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-32 transition-opacity duration-500">
-            <div class="relative w-16 h-16 mb-4">
-                <div class="absolute inset-0 bg-brand-cyan blur-lg opacity-20 rounded-full animate-pulse"></div>
-                <div class="absolute inset-0 border-4 border-transparent border-t-brand-cyan border-r-brand-purple rounded-full animate-spin"></div>
-                <div class="absolute inset-0 flex items-center justify-center text-brand-cyan">
-                    <i class="ph-fill ph-files text-2xl"></i>
-                </div>
-            </div>
-            <h3 class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-cyan to-brand-purple animate-pulse">Loading files...</h3>
+        // Show a simple clean loader
+        fileContainer.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-24">
+            <div class="w-10 h-10 border-4 border-dark-border border-t-brand-cyan rounded-full animate-spin mb-3"></div>
+            <h3 class="text-sm font-semibold text-gray-400">Loading files...</h3>
         </div>`;
 
         // Ensure a 500ms minimum smooth transition as requested
@@ -308,11 +313,11 @@ function renderFiles() {
             if (f.isDirectory) return false;
 
             const ext = f.name.split('.').pop().toLowerCase();
-            const { iconClass } = getFileIcon(false, ext);
+            const { iconColorClass } = getFileIcon(false, ext);
 
-            if (currentCategory === 'media') return iconClass.includes('video') || iconClass.includes('audio') || iconClass.includes('image');
-            if (currentCategory === 'docs') return iconClass.includes('file-text') || iconClass.includes('pdf');
-            if (currentCategory === 'archives') return iconClass.includes('archive');
+            if (currentCategory === 'media') return iconColorClass.includes('video') || iconColorClass.includes('audio') || iconColorClass.includes('image');
+            if (currentCategory === 'docs') return iconColorClass.includes('doc') || iconColorClass.includes('pdf');
+            if (currentCategory === 'archives') return iconColorClass.includes('archive');
             if (currentCategory === 'windows') return ['exe', 'msi', 'bat'].includes(ext);
             if (currentCategory === 'android') return ['apk'].includes(ext);
 
@@ -363,7 +368,7 @@ function renderFiles() {
             </div>
         `;
     } else {
-        fileContainer.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 pb-10';
+        fileContainer.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 pb-10';
     }
 
     displayFiles.forEach(file => {
@@ -393,7 +398,7 @@ function renderFiles() {
                 <div class="w-24 hidden md:block text-sm text-gray-400 text-right px-2 whitespace-nowrap">
                     ${formattedSize}
                 </div>
-                <div class="w-20 shrink-0 flex flex-row items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div class="w-20 shrink-0 flex flex-row items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     ${file.isDirectory ?
                     `<button class="w-8 h-8 rounded border border-dark-border text-gray-300 hover:text-white hover:bg-dark-hover flex items-center justify-center transition-colors" title="Open"><i class="ph ph-arrow-right"></i></button>`
                     :
@@ -402,10 +407,26 @@ function renderFiles() {
                 </div>
             `;
         } else {
-            // High-End Premium Grid Card
-            card.className = 'file-card bg-dark-card border border-dark-border rounded-3xl p-5 flex flex-col items-center justify-center text-center cursor-pointer relative overflow-hidden h-56 w-full group/card transition-all duration-500 hover:border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:-translate-y-2';
-
             const ext = file.isDirectory ? '' : file.name.split('.').pop().toLowerCase();
+            const extLower = ext.toLowerCase();
+            let cardClass = 'card-unknown';
+            if (file.isDirectory) cardClass = 'card-folder';
+            else {
+                if (icons.video.includes(extLower)) cardClass = 'card-video';
+                else if (icons.audio.includes(extLower)) cardClass = 'card-audio';
+                else if (icons.image.includes(extLower)) cardClass = 'card-image';
+                else if (icons.pdf.includes(extLower)) cardClass = 'card-pdf';
+                else if (icons.archive.includes(extLower)) cardClass = 'card-archive';
+                else if (icons.code.includes(extLower)) cardClass = 'card-code';
+                else if (icons.doc.includes(extLower)) cardClass = 'card-doc';
+                else if (['exe', 'msi', 'bat'].includes(extLower)) cardClass = 'card-app-windows';
+                else if (['apk', 'aab'].includes(extLower)) cardClass = 'card-app-android';
+                else if (['dmg', 'app', 'pkg', 'ipa'].includes(extLower)) cardClass = 'card-app-apple';
+            }
+
+            // Flat, Sleek Professional Grid Card
+            card.className = `file-card bg-dark-card border border-dark-border rounded-2xl p-4 md:p-5 pb-14 md:pb-5 flex flex-col items-center justify-center text-center cursor-pointer relative overflow-hidden h-52 w-full group/card transition-all duration-200 hover:bg-dark-hover shadow-md ${cardClass}`;
+
             const { svg, iconColorClass } = getFileIcon(file.isDirectory, ext);
             
             // "icon-something text-color" -> extract "text-color"
@@ -413,39 +434,29 @@ function renderFiles() {
             const glowColor = colorOnly.replace('text-', '');
             
             card.innerHTML = `
-                <!-- Huge Subtle Radiant Glow Background with Pulse -->
-                <div class="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 pointer-events-none bg-gradient-to-b from-transparent to-${glowColor.replace('text-', 'bg-')}/30 group-hover/card:animate-pulse"></div>
-                <div class="absolute -top-10 -right-10 w-32 h-32 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 pointer-events-none rounded-full blur-[40px] ${glowColor.replace('text-', 'bg-')}/40 group-hover/card:animate-pulse"></div>
-                
-                <!-- Main Animated Icon Box -->
-                <div class="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${colorOnly.replace('text-', 'bg-').split(' ')[0]}/10 border border-${glowColor.replace('text-', 'bg-')}/20 ${colorOnly} transform group-hover/card:scale-110 transition-all duration-500 relative z-10 shadow-[0_0_15px_rgba(0,0,0,0.5)] overflow-hidden">
-                    <div class="w-10 h-10 relative z-10 transition-all duration-300 group-hover/card:-translate-y-10 group-hover/card:opacity-0">${svg}</div>
-                    
-                    <!-- File Format & Size Overlay on Hover -->
-                    <div class="absolute inset-0 rounded-2xl overflow-hidden bg-dark-bg/90 backdrop-blur-md opacity-0 group-hover/card:opacity-100 transition-all duration-300 flex flex-col items-center justify-center transform translate-y-full group-hover/card:translate-y-0 z-20">
-                        <span class="text-[10px] font-black tracking-widest uppercase text-${glowColor}">${file.isDirectory ? 'DIR' : ext}</span>
-                        <span class="text-[11px] font-bold text-white mt-1 whitespace-nowrap drop-shadow-md">${file.isDirectory ? '--' : formatBytes(file.size, 0)}</span>
-                    </div>
+                <!-- Main Icon Box -->
+                <div class="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center mb-3 md:mb-4 ${colorOnly.replace('text-', 'bg-').split(' ')[0]}/10 border border-${glowColor.replace('text-', 'bg-')}/15 ${colorOnly} relative z-10 overflow-hidden">
+                    <div class="w-8 h-8 md:w-10 md:h-10 relative z-10">${svg}</div>
                 </div>
                 
-                <!-- Expanded File Name Area -->
-                <div class="w-full z-10 relative flex flex-col items-center flex-1 justify-between transition-all duration-300">
+                <!-- File Name Area -->
+                <div class="w-full z-10 relative flex flex-col items-center flex-1 justify-between">
                     <div class="w-full">
-                        <h3 class="font-bold text-[0.95rem] leading-tight text-white line-clamp-2 w-full px-1 group-hover/card:text-${glowColor.split('-')[0]}-300 transition-colors drop-shadow-md" title="${file.name}">${file.name}</h3>
+                        <h3 class="font-bold text-sm md:text-[0.95rem] leading-tight text-white line-clamp-2 w-full px-1 group-hover/card:text-brand-cyan transition-colors" title="${file.name}">${file.name}</h3>
                     </div>
-                    <!-- Highly Visible Size Badge -->
-                    <div class="mt-2 bg-dark-bg/60 border border-white/5 rounded-full px-3 py-1 shadow-inner opacity-80 group-hover/card:opacity-100 group-hover/card:border-white/20 transition-all min-w-[max-content]">
-                        <p class="text-[0.7rem] uppercase tracking-wider text-gray-300 font-extrabold">${file.isDirectory ? 'Directory' : formattedSize}</p>
+                    <!-- Size/Type Badge -->
+                    <div class="mt-1 md:mt-2 bg-dark-bg/60 border border-white/5 rounded-md px-2 py-0.5 shadow-inner opacity-80 transition-all min-w-[max-content]">
+                        <p class="text-[0.65rem] md:text-[0.7rem] uppercase tracking-wider text-gray-300 font-extrabold">${file.isDirectory ? 'Directory' : formattedSize}</p>
                     </div>
                 </div>
 
-                <!-- Hidden Overlay Actions (Download/Play) -->
-                <div class="absolute inset-x-3 bottom-3 translate-y-12 opacity-0 group-hover/card:translate-y-0 group-hover/card:opacity-100 transition-all duration-400 z-20 flex gap-2">
-                    <button class="flex-1 py-2 bg-white text-black hover:bg-gray-200 rounded-xl text-xs font-bold transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)] flex items-center justify-center gap-1" onclick="handleCardAction(event, ${file.isDirectory}, '${fullPath.replace(/'/g, "\\'")}', '${fileExt}', '${file.name.replace(/'/g, "\\'")}')">
-                        ${file.isDirectory ? '<i class="ph-bold ph-folder-open text-sm"></i> Open' : '<i class="ph-bold ph-play text-sm"></i> Play'}
+                <!-- Action Overlay (Download/Play) - Always visible on mobile, clean fade-in on desktop hover -->
+                <div class="absolute inset-x-2 bottom-2 md:inset-x-3 md:bottom-3 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity duration-150 z-20 flex gap-1.5 md:gap-2">
+                    <button class="flex-1 py-1.5 md:py-2 bg-gradient-to-r from-[#3B82F6] to-[#EC4899] hover:opacity-90 text-white rounded-lg md:rounded-xl text-[10px] md:text-xs font-extrabold flex items-center justify-center gap-1 shadow-md shadow-brand-purple/10 border-0" onclick="handleCardAction(event, ${file.isDirectory}, '${fullPath.replace(/'/g, "\\'")}', '${fileExt}', '${file.name.replace(/'/g, "\\'")}')">
+                        ${file.isDirectory ? '<i class="ph-bold ph-folder-open text-xs md:text-sm"></i> Open' : '<i class="ph-bold ph-play text-xs md:text-sm"></i> Play'}
                     </button>
                     ${!file.isDirectory ?
-                    `<a href="/api/download${fullPath}" download class="w-10 h-10 flex items-center justify-center bg-dark-bg/80 backdrop-blur border border-white/20 hover:border-brand-cyan hover:text-brand-cyan text-white rounded-xl transition-all shadow-lg font-bold" title="Download directly" onclick="event.stopPropagation()"><i class="ph-bold ph-download-simple text-lg"></i></a>`
+                    `<a href="/api/download${fullPath}" download class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-dark-bg/85 border border-white/10 hover:border-brand-cyan hover:text-brand-cyan text-white rounded-lg md:rounded-xl transition-colors font-bold" title="Download directly" onclick="event.stopPropagation()"><i class="ph-bold ph-download-simple text-sm md:text-lg"></i></a>`
                     : ''}
                 </div>
             `;
@@ -826,7 +837,7 @@ function closeModal() {
 function getFileIcon(isDirectory, ext) {
     if (isDirectory) {
         return {
-            svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full drop-shadow-[0_4px_12px_rgba(139,92,246,0.6)]"><path d="M19.5 7.5h-5.22l-2.06-2.57A2.25 2.25 0 0 0 10.47 4.2H4.5A2.25 2.25 0 0 0 2.25 6.45v11.1a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25v-7.8a2.25 2.25 0 0 0-2.25-2.25Z"/></svg>`,
+            svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M19.5 7.5h-5.22l-2.06-2.57A2.25 2.25 0 0 0 10.47 4.2H4.5A2.25 2.25 0 0 0 2.25 6.45v11.1a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25v-7.8a2.25 2.25 0 0 0-2.25-2.25Z"/></svg>`,
             iconColorClass: 'icon-folder text-brand-purple'
         };
     }
@@ -836,19 +847,19 @@ function getFileIcon(isDirectory, ext) {
     // 1. Hardware/Platform Binaries
     if (['exe', 'msi', 'bat'].includes(extLower)) {
         return { // Windows Logo
-            svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full drop-shadow-[0_4px_12px_rgba(59,130,246,0.6)]"><path d="M22.5 11.25V3a.75.75 0 0 0-1.157-.63l-9.75 6.25A.75.75 0 0 0 11.25 9.25v2H22.5ZM1.5 12v6.75a.75.75 0 0 0 1.157.63l8.25-5.25a.75.75 0 0 0 .343-.63V12H1.5Zm9.75-2.75v-4.5a.75.75 0 0 0-1.157-.63l-8.25 5.25A.75.75 0 0 0 1.5 10v2h9.75ZM22.5 12.75h-11.25v6.5a.75.75 0 0 0 .343.63l9.75 6.25a.75.75 0 0 0 1.157-.63V12.75Z"/></svg>`,
+            svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M22.5 11.25V3a.75.75 0 0 0-1.157-.63l-9.75 6.25A.75.75 0 0 0 11.25 9.25v2H22.5ZM1.5 12v6.75a.75.75 0 0 0 1.157.63l8.25-5.25a.75.75 0 0 0 .343-.63V12H1.5Zm9.75-2.75v-4.5a.75.75 0 0 0-1.157-.63l-8.25 5.25A.75.75 0 0 0 1.5 10v2h9.75ZM22.5 12.75h-11.25v6.5a.75.75 0 0 0 .343.63l9.75 6.25a.75.75 0 0 0 1.157-.63V12.75Z"/></svg>`,
             iconColorClass: 'icon-app text-blue-500' // Distinct vibrant blue for Windows tools
         };
     }
     if (['apk', 'aab'].includes(extLower)) {
-        return { // Android Bot representation
-            svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full drop-shadow-[0_4px_12px_rgba(16,185,129,0.7)]"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM9 12a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm7.5 1.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" clip-rule="evenodd" /><path d="M12 4.5a.75.75 0 0 1 .75.75v1.656a5.256 5.256 0 0 1 2.246.791l1.107-1.107a.75.75 0 0 1 1.06 1.061l-1.037 1.037c1.378 1.442 2.124 3.4 2.124 5.562H5.75c0-2.162.746-4.12 2.124-5.562l-1.037-1.037a.75.75 0 0 1 1.06-1.061l1.107 1.107c.692-.472 1.44-.755 2.246-.791V5.25A.75.75 0 0 1 12 4.5Z" /></svg>`,
+        return { // Flat Android Bot representation
+            svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M6 18c0 .55.45 1 1 1h1v3c0 .55.45 1 1 1s1-.45 1-1v-3h4v3c0 .55.45 1 1 1s1-.45 1-1v-3h1c.55 0 1-.45 1-1V9H6v9zm6-14.93L13.93 1.1a.5.5 0 0 1 .84.54L13.15 4.5c1.94.57 3.47 2.18 3.8 4.25H7.05c.33-2.07 1.86-3.68 3.8-4.25L9.23 1.64a.5.5 0 0 1 .84-.54L12 3.07zM5 9c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1s1-.45 1-1v-6c0-.55-.45-1-1-1zm14 0c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1s1-.45 1-1v-6c0-.55-.45-1-1-1z"/></svg>`,
             iconColorClass: 'icon-app text-emerald-500' // Google green
         };
     }
     if (['dmg', 'app', 'pkg', 'ipa'].includes(extLower)) {
         return { // Apple/Mac
-            svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full drop-shadow-[0_4px_12px_rgba(209,213,219,0.5)]"><path d="M18.75 19.5c0 1.243-1.007 2.25-2.25 2.25H7.5c-1.243 0-2.25-1.007-2.25-2.25v-15c0-1.243 1.007-2.25 2.25-2.25h9.56l5.69 5.69v11.56ZM17.25 7.5V3.375l3.875 3.875h-3.875ZM8.25 12a1.5 1.5 0 0 0-1.5 1.5v3A1.5 1.5 0 0 0 8.25 18h7.5a1.5 1.5 0 0 0 1.5-1.5v-3a1.5 1.5 0 0 0-1.5-1.5h-7.5Z"/></svg>`,
+            svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M18.75 19.5c0 1.243-1.007 2.25-2.25 2.25H7.5c-1.243 0-2.25-1.007-2.25-2.25v-15c0-1.243 1.007-2.25 2.25-2.25h9.56l5.69 5.69v11.56ZM17.25 7.5V3.375l3.875 3.875h-3.875ZM8.25 12a1.5 1.5 0 0 0-1.5 1.5v3A1.5 1.5 0 0 0 8.25 18h7.5a1.5 1.5 0 0 0 1.5-1.5v-3a1.5 1.5 0 0 0-1.5-1.5h-7.5Z"/></svg>`,
             iconColorClass: 'icon-app text-gray-300' // Sleek aluminum silver
         };
     }
@@ -864,13 +875,13 @@ function getFileIcon(isDirectory, ext) {
         doc: ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'md', 'csv']
     };
 
-    if (icons.video.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full drop-shadow-[0_4px_12px_rgba(6,182,212,0.6)]"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm14.024-.983a1.125 1.125 0 0 1 0 1.966l-5.603 3.113A1.125 1.125 0 0 1 9 15.113V8.887c0-.857.921-1.4 1.671-.983l5.603 3.113Z" clip-rule="evenodd" /></svg>`, iconColorClass: 'icon-video text-brand-cyan' };
-    if (icons.audio.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full drop-shadow-[0_4px_12px_rgba(217,70,239,0.7)]"><path fill-rule="evenodd" d="M19.36 2.766a.75.75 0 0 0-1.002-.511l-9 3A.75.75 0 0 0 8.85 6v10.518A2.99 2.99 0 0 0 6.75 16.5a3 3 0 1 0 3 3V9.697l7.5-2.5v9.32a2.99 2.99 0 0 0-2.1 0 3 3 0 1 0 3 3V2.766Z" clip-rule="evenodd"/></svg>`, iconColorClass: 'icon-audio text-fuchsia-500' };
-    if (icons.image.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full drop-shadow-[0_4px_12px_rgba(251,191,36,0.6)]"><path fill-rule="evenodd" d="M1.5 6a2.25 2.25 0 0 1 2.25-2.25h16.5A2.25 2.25 0 0 1 22.5 6v12a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V6ZM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0 0 21 18v-1.94l-2.69-2.689a1.5 1.5 0 0 0-2.12 0l-.88.879.97.97a.75.75 0 1 1-1.06 1.06l-5.16-5.159a1.5 1.5 0 0 0-2.12 0L3 16.061Zm10.125-7.81a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z" clip-rule="evenodd"/></svg>`, iconColorClass: 'icon-image text-amber-400' };
-    if (icons.pdf.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full drop-shadow-[0_4px_12px_rgba(244,63,94,0.6)]"><path d="M19.5 22.5a3 3 0 0 0 3-3v-8.104a3 3 0 0 0-.879-2.121l-5.12-5.121A3 3 0 0 0 14.38 3.25H6a3 3 0 0 0-3 3v2.25a.75.75 0 0 0 1.5 0V6.25a1.5 1.5 0 0 1 1.5-1.5h8.25a.75.75 0 0 0 .53-.22l5.12-5.121a.75.75 0 0 1 .22.53v8.104a1.5 1.5 0 0 1-1.5 1.5h-7.5a3 3 0 0 0-3 3v4.5H6.25a1.5 1.5 0 0 1-1.5-1.5V15a.75.75 0 0 0-1.5 0v5.5a3 3 0 0 0 3 3H19.5Zm-8.25-5.25v4.5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5v-4.5a1.5 1.5 0 0 0-1.5-1.5h-6a1.5 1.5 0 0 0-1.5 1.5Z" /></svg>`, iconColorClass: 'icon-pdf text-rose-500' };
-    if (icons.archive.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full drop-shadow-[0_4px_12px_rgba(234,179,8,0.7)]"><path fill-rule="evenodd" d="M4.25 12a.75.75 0 0 1 .75-.75h14a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1-.75-.75Zm0 4.5a.75.75 0 0 1 .75-.75h14a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1-.75-.75Zm0-9a.75.75 0 0 1 .75-.75h14a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2h11A2.5 2.5 0 0 1 20 4.5v15a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 19.5v-15ZM6.5 3.5a1 1 0 0 0-1 1v15a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-15a1 1 0 0 0-1-1h-11Z"/></svg>`, iconColorClass: 'icon-archive text-yellow-500' };
-    if (icons.code.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full drop-shadow-[0_4px_12px_rgba(249,115,22,0.6)]"><path fill-rule="evenodd" d="M14.447 3.026a.75.75 0 0 1 .527.921l-4.5 16.5a.75.75 0 0 1-1.448-.394l4.5-16.5a.75.75 0 0 1 .921-.527ZM16.72 6.22a.75.75 0 0 1 1.06 0l5.25 5.25a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 1 1-1.06-1.06L21.44 12l-4.72-4.72a.75.75 0 0 1 0-1.06Zm-9.44 0a.75.75 0 0 1 0 1.06L2.56 12l4.72 4.72a.75.75 0 0 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" /></svg>`, iconColorClass: 'icon-code text-orange-500' };
-    if (icons.doc.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full opacity-70"><path fill-rule="evenodd" d="M4.5 2.25h9l6 6v11.25a2.25 2.25 0 0 1-2.25 2.25h-12.75A2.25 2.25 0 0 1 2.25 19.5v-15A2.25 2.25 0 0 1 4.5 2.25Zm8.25 1.5v4.5h4.5l-4.5-4.5ZM3.75 19.5a.75.75 0 0 0 .75.75h12.75a.75.75 0 0 0 .75-.75v-9H12a1.5 1.5 0 0 1-1.5-1.5v-6H4.5a.75.75 0 0 0-.75.75v15Z" clip-rule="evenodd" /></svg>`, iconColorClass: 'icon-doc text-gray-300' };
+    if (icons.video.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M8 5.14v14c0 .86.94 1.39 1.66.9l10.5-7a1.125 1.125 0 0 0 0-1.8l-10.5-7c-.72-.49-1.66.04-1.66.9z"/></svg>`, iconColorClass: 'icon-video text-brand-cyan' };
+    if (icons.audio.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h6V3h-8z"/></svg>`, iconColorClass: 'icon-audio text-fuchsia-500' };
+    if (icons.image.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1v-2.5l3.5-3.5L11 14.5l4.5-4.5L19 14v4c0 .55-.45 1-1 1zm-3-9c-.83 0-1.5-.67-1.5-1.5S14.17 7 15 7s1.5.67 1.5 1.5S15.83 10 15 10z"/></svg>`, iconColorClass: 'icon-image text-amber-400' };
+    if (icons.pdf.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`, iconColorClass: 'icon-pdf text-rose-500' };
+    if (icons.archive.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M20 3H4a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10h1a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-1 5H5V5h14v3zm-3 4H8v-2h8v2z"/></svg>`, iconColorClass: 'icon-archive text-yellow-500' };
+    if (icons.code.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>`, iconColorClass: 'icon-code text-orange-500' };
+    if (icons.doc.includes(extLower)) return { svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`, iconColorClass: 'icon-doc text-gray-300' };
 
     return { 
         svg: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full opacity-50"><path fill-rule="evenodd" d="M4.5 2.25h9l6 6v11.25a2.25 2.25 0 0 1-2.25 2.25h-12.75A2.25 2.25 0 0 1 2.25 19.5v-15A2.25 2.25 0 0 1 4.5 2.25Zm8.25 1.5v4.5h4.5l-4.5-4.5ZM3.75 19.5a.75.75 0 0 0 .75.75h12.75a.75.75 0 0 0 .75-.75v-9H12a1.5 1.5 0 0 1-1.5-1.5v-6H4.5a.75.75 0 0 0-.75.75v15Z" clip-rule="evenodd" /></svg>`, 
@@ -1182,8 +1193,8 @@ function uploadFiles(event) {
         
         if (xhr.status === 200) {
             uploadStatusText.textContent = 'Upload Complete!';
-            uploadProgressBar.classList.replace('from-primary-500', 'from-green-500');
-            uploadProgressBar.classList.replace('to-purple-500', 'to-emerald-500');
+            uploadProgressBar.classList.replace('from-[#3B82F6]', 'from-emerald-500');
+            uploadProgressBar.classList.replace('to-[#EC4899]', 'to-green-500');
             showToast('Files uploaded successfully!', 'success');
 
             // Wait a sec then hide and refresh
@@ -1191,8 +1202,8 @@ function uploadFiles(event) {
                 uploadContainer.classList.add('hidden');
                 uploadContainer.classList.remove('flex');
                 // reset bar color
-                uploadProgressBar.classList.replace('from-green-500', 'from-primary-500');
-                uploadProgressBar.classList.replace('to-emerald-500', 'to-purple-500');
+                uploadProgressBar.classList.replace('from-emerald-500', 'from-[#3B82F6]');
+                uploadProgressBar.classList.replace('to-green-500', 'to-[#EC4899]');
                 loadFiles(currentPath);
             }, 2000);
         } else {
@@ -1201,7 +1212,8 @@ function uploadFiles(event) {
             setTimeout(() => {
                 uploadContainer.classList.add('hidden');
                 uploadContainer.classList.remove('flex');
-            }, 3000);
+                loadFiles(currentPath);
+            }, 2000);
         }
 
         // Reset input so same files can be chosen again

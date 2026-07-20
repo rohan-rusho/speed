@@ -11,16 +11,27 @@
     scrollbar-width: none;
 }
 
+body {
+    background-color: #0E101D; /* Rich dark navy-graphite gray, not a pitch black */
+    background-image: 
+        radial-gradient(at 10% 0%, rgba(79, 70, 229, 0.22) 0px, transparent 50%), /* Subtle top-left indigo glow */
+        radial-gradient(at 90% 0%, rgba(236, 72, 153, 0.18) 0px, transparent 50%), /* Subtle top-right pink glow */
+        linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+    background-attachment: fixed;
+}
+
 /* Base transitions */
 * {
     transition-property: background-color, border-color, color, fill, stroke, transform, opacity, box-shadow;
-    transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    transition-duration: 400ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
 }
 
 /* SN Media Premium Card Styling */
 .file-card {
-    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     transform-style: preserve-3d;
 }
 
@@ -30,15 +41,15 @@
 }
 
 .filter-chip {
-    @apply px-5 py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer whitespace-nowrap bg-dark-card/60 border border-white/5 text-gray-400 backdrop-blur-md;
+    @apply px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap bg-dark-card border border-dark-border text-gray-400;
 }
 
 .filter-chip:hover {
-    @apply bg-brand-cyan/15 border-brand-cyan/40 text-white transform -translate-y-0.5 shadow-lg shadow-brand-cyan/20;
+    @apply bg-dark-hover border-white/20 text-white;
 }
 
 .filter-chip.active {
-    @apply bg-brand-cyan border-brand-cyan shadow-lg shadow-brand-cyan/40 text-dark-bg;
+    @apply bg-brand-cyan border-brand-cyan text-dark-bg;
 }
 
 /* Gradient Text Utilities matching Portfolio */
@@ -72,8 +83,73 @@ audio {
     100% { opacity: 0; }
 }
 .toast-enter {
-    animation: slide-in-bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    animation: slide-in-bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 .toast-leave {
     animation: fade-out 0.3s forwards;
+}
+
+/* Category card glows on hover matching SN Media reference card */
+.file-card {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.file-card.card-folder:hover {
+    border-color: rgba(167, 139, 250, 0.6) !important;
+    box-shadow: 0 0 20px rgba(167, 139, 250, 0.25) !important;
+}
+
+.file-card.card-video:hover {
+    border-color: rgba(45, 212, 191, 0.6) !important;
+    box-shadow: 0 0 20px rgba(45, 212, 191, 0.25) !important;
+}
+
+.file-card.card-audio:hover {
+    border-color: rgba(217, 70, 239, 0.6) !important;
+    box-shadow: 0 0 20px rgba(217, 70, 239, 0.25) !important;
+}
+
+.file-card.card-image:hover {
+    border-color: rgba(251, 191, 36, 0.6) !important;
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.25) !important;
+}
+
+.file-card.card-pdf:hover {
+    border-color: rgba(244, 63, 94, 0.6) !important;
+    box-shadow: 0 0 20px rgba(244, 63, 94, 0.25) !important;
+}
+
+.file-card.card-archive:hover {
+    border-color: rgba(234, 179, 8, 0.6) !important;
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.25) !important;
+}
+
+.file-card.card-code:hover {
+    border-color: rgba(249, 115, 22, 0.6) !important;
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.25) !important;
+}
+
+.file-card.card-doc:hover {
+    border-color: rgba(209, 213, 219, 0.6) !important;
+    box-shadow: 0 0 20px rgba(209, 213, 219, 0.2) !important;
+}
+
+.file-card.card-app-windows:hover {
+    border-color: rgba(59, 130, 246, 0.6) !important;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.25) !important;
+}
+
+.file-card.card-app-android:hover {
+    border-color: rgba(16, 185, 129, 0.6) !important;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.25) !important;
+}
+
+.file-card.card-app-apple:hover {
+    border-color: rgba(156, 163, 175, 0.6) !important;
+    box-shadow: 0 0 20px rgba(156, 163, 175, 0.2) !important;
+}
+
+.file-card.card-unknown:hover {
+    border-color: rgba(156, 163, 175, 0.5) !important;
+    box-shadow: 0 0 20px rgba(156, 163, 175, 0.15) !important;
 }
