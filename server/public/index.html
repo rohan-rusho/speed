@@ -4,12 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LAN File Server</title>
+    <title>Rusho Server — LAN File Center</title>
+    <meta name="description" content="Rusho Server — a premium LAN file & media server. Browse, stream, upload and share files over your local network.">
     <link rel="icon" type="image/png" href="/favicon.png">
-    
+    <!-- Apply the saved theme before first paint (avoids a dark/light flash) -->
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('lan-server-theme');
+                var dark = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.documentElement.classList.toggle('dark', dark);
+            } catch (e) {}
+        })();
+    </script>
+
     <!-- Plyr Custom Video Player CSS -->
     <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
-    
+
     <!-- Plyr Fullscreen Overrides -->
     <style>
         /* When Plyr enters fullscreen, fill the entire screen */
@@ -77,43 +88,43 @@
             object-fit: contain;
         }
     </style>
-    
+
     <link rel="stylesheet" href="/css/style.css">
     <!-- Phosphor Icons for modern slick icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
 
 <body
-    class="bg-dark-bg text-gray-100 min-h-screen transition-colors duration-200 antialiased selection:bg-brand-cyan selection:text-white pb-20 md:pb-0 font-sans relative">
+    class="bg-mist-bg text-slate-900 dark:bg-dark-bg dark:text-slate-100 min-h-screen transition-colors duration-200 antialiased selection:bg-brand-cyan selection:text-white pb-28 md:pb-8 font-sans relative">
 
     <!-- Global Preloader -->
     <div id="global-preloader"
-        class="fixed inset-0 bg-dark-bg z-[100] flex flex-col items-center justify-center transition-opacity duration-300">
-        <div class="w-12 h-12 border-4 border-dark-border border-t-brand-cyan rounded-full animate-spin mb-4"></div>
-        <h2 class="text-base font-semibold text-gray-300">Connecting...</h2>
+        class="fixed inset-0 bg-white dark:bg-dark-bg z-[100] flex flex-col items-center justify-center transition-opacity duration-300">
+        <div class="w-12 h-12 border-4 border-slate-200 dark:border-dark-border border-t-brand-cyan rounded-full animate-spin mb-4"></div>
+        <h2 class="text-base font-semibold text-slate-500 dark:text-slate-300">Connecting...</h2>
     </div>
 
-    <!-- Setup View (Unchanged logically, updated styling) -->
+    <!-- Setup View -->
     <div id="setup-view" class="hidden min-h-screen flex items-center justify-center p-4">
-        <div class="bg-dark-card p-8 rounded-2xl shadow-2xl w-full max-w-md border border-dark-border">
-            <h1 class="text-2xl font-bold mb-2 flex items-center gap-2">
+        <div class="glass-panel bg-white dark:bg-dark-card p-8 rounded-card-lg shadow-xl w-full max-w-md border border-slate-200 dark:border-dark-border">
+            <h1 class="text-2xl font-bold tracking-tight mb-2 flex items-center gap-2">
                 <i class="ph-fill ph-hard-drives text-brand-cyan"></i> Server Setup
             </h1>
-            <p class="text-gray-400 mb-6 text-sm">Please configure the root directory to share over
+            <p class="text-slate-500 dark:text-slate-400 mb-6 text-sm">Please configure the root directory to share over
                 your LAN.</p>
 
             <form id="setup-form" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium mb-1 text-gray-300">Root Directory Path</label>
+                    <label class="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Root Directory Path</label>
                     <input type="text" id="root-dir-input" placeholder="e.g. D:\Movies"
-                        class="w-full px-4 py-2 rounded-lg bg-dark-bg border border-dark-border focus:ring-2 focus:ring-brand-cyan focus:border-transparent outline-none transition-all text-white">
+                        class="w-full px-4 py-2.5 rounded-xl bg-mist-bg dark:bg-dark-bg border border-slate-200 dark:border-dark-border focus:ring-2 focus:ring-brand-cyan focus:border-transparent outline-none transition-all text-slate-900 dark:text-white placeholder-slate-400">
                 </div>
                 <button type="submit"
-                    class="w-full bg-brand-purple hover:bg-brand-purple/90 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
-                    <i class="ph ph-check-circle"></i> Save & Start
+                    class="w-full bg-brand-purple hover:bg-brand-purple/90 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 min-h-10">
+                    <i class="ph ph-check-circle"></i> Save &amp; Start
                 </button>
                 <button type="button" id="setup-cancel"
-                    class="hidden w-full bg-dark-border hover:bg-gray-700 text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    class="hidden w-full bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 min-h-10">
                     <i class="ph ph-x"></i> Cancel
                 </button>
             </form>
@@ -124,29 +135,45 @@
     <!-- Main App View -->
     <div id="app-view" class="hidden flex flex-col min-h-screen">
 
-        <!-- Header / Logo Area -->
-        <header class="bg-dark-bg/95 backdrop-blur-md sticky top-0 border-b border-dark-border z-40">
-            <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 w-full">
-                <div class="flex items-center justify-between">
+        <!-- Slim sticky glass header (v2.1) -->
+        <header class="glass-header bg-white/80 dark:bg-[#0B0D17]/80 backdrop-blur-xl sticky top-0 border-b border-slate-200 dark:border-white/10 z-40">
+            <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 w-full">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                     <!-- Branding -->
-                    <div class="flex items-center gap-3 cursor-pointer" onclick="loadFiles('/')">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#3B82F6] via-[#A855F7] to-[#EC4899] flex items-center justify-center text-white shadow-lg shadow-brand-purple/20">
+                    <div class="flex items-center gap-2.5 cursor-pointer shrink-0" onclick="loadFiles('/')">
+                        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-400 via-brand-purple to-pink-500 flex items-center justify-center text-white shadow-lg shadow-brand-purple/20">
                             <i class="ph-fill ph-hard-drives text-xl"></i>
                         </div>
-                        <h1 class="text-xl font-bold tracking-wide flex items-center">
-                            <span class="text-white font-extrabold">Rusho&nbsp;</span><span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-purple via-[#EC4899] to-brand-cyan font-black">Server</span>
+                        <h1 class="text-lg font-bold tracking-tight flex items-center">
+                            <span class="text-slate-900 dark:text-white font-extrabold">Rusho&nbsp;</span><span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-purple via-pink-500 to-brand-cyan font-black">Server</span>
                         </h1>
                     </div>
 
+                    <!-- Centred pill search (Ctrl/⌘K to focus, Esc to clear) -->
+                    <div class="order-3 w-full md:order-2 md:w-auto md:flex-1 md:max-w-md md:mx-auto">
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-cyan transition-colors">
+                                <i class="ph-bold ph-magnifying-glass text-lg"></i>
+                            </div>
+                            <input type="text" id="search-input" placeholder="Search files, folders..." autocomplete="off"
+                                class="w-full pl-10 pr-16 py-2.5 bg-slate-100 dark:bg-white/5 border border-transparent hover:border-slate-200 dark:hover:border-white/10 focus:bg-white dark:focus:bg-white/5 focus:border-brand-cyan focus:ring-2 focus:ring-brand-cyan/30 rounded-full transition-all text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 shadow-sm outline-none font-medium text-sm">
+                            <kbd class="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 items-center gap-0.5 text-[11px] font-semibold text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-white/10 rounded-md px-1.5 py-0.5 bg-white dark:bg-white/5 pointer-events-none">⌘K</kbd>
+                        </div>
+                    </div>
+
                     <!-- Right side Actions -->
-                    <div class="flex items-center gap-4">
-                        <button id="qr-btn" class="w-10 h-10 rounded-full bg-dark-card border border-dark-border text-gray-400 hover:text-white hover:border-white/20 hover:shadow-lg flex items-center justify-center transition-all" title="Show QR code for LAN address">
+                    <div class="order-2 md:order-3 flex items-center gap-2 ml-auto">
+                        <button id="qr-btn" class="icon-btn" title="Show QR code for LAN address" aria-label="Show QR code">
                             <i class="ph-bold ph-qr-code text-xl"></i>
                         </button>
-                        <button id="trash-btn" class="w-10 h-10 rounded-full bg-dark-card border border-dark-border text-gray-400 hover:text-white hover:border-white/20 hover:shadow-lg flex items-center justify-center transition-all" title="Trash">
+                        <button id="trash-btn" class="icon-btn" title="Trash" aria-label="Open trash">
                             <i class="ph-bold ph-trash text-xl"></i>
                         </button>
-                        <button id="settings-toggle" class="w-10 h-10 rounded-full bg-dark-card border border-dark-border text-gray-400 hover:text-white hover:border-white/20 hover:shadow-lg flex items-center justify-center transition-all">
+                        <button id="theme-toggle" class="icon-btn" title="Toggle light / dark theme" aria-label="Toggle light or dark theme">
+                            <span class="hidden dark:inline leading-none"><i class="ph-bold ph-sun text-xl"></i></span>
+                            <span class="dark:hidden leading-none"><i class="ph-bold ph-moon text-xl"></i></span>
+                        </button>
+                        <button id="settings-toggle" class="icon-btn" title="Settings" aria-label="Settings">
                             <i class="ph-bold ph-gear text-xl"></i>
                         </button>
                     </div>
@@ -154,101 +181,83 @@
             </div>
         </header>
 
-        <!-- Slim Search & Branding Area (replaces giant hero) -->
-        <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-dark-border/40 pb-4">
-                <div>
-                    <h2 class="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-2.5">
-                        <span>Premium File Center</span>
-                        <span class="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-brand-cyan/15 text-brand-cyan border border-brand-cyan/20">LAN Active</span>
-                    </h2>
+        <!-- Compact page header (v2.1): folder + counts + live status -->
+        <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-1">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+                <div class="min-w-0">
+                    <h2 id="folder-name" class="text-2xl md:text-[28px] leading-tight font-extrabold tracking-tight text-slate-900 dark:text-white truncate">All Files</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5"><span id="folder-count">0 items</span> &middot; <span id="folder-size">0 Bytes</span></p>
                 </div>
-                <div class="relative w-full md:max-w-md group flex">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-brand-cyan transition-colors">
-                        <i class="ph-bold ph-magnifying-glass text-lg"></i>
-                    </div>
-                    <input type="text" id="search-input" placeholder="Search files, folders..."
-                        class="w-full pl-11 pr-4 py-2.5 bg-dark-card border border-white/10 hover:border-white/20 focus:border-brand-cyan focus:ring-2 focus:ring-brand-cyan/30 rounded-full transition-all text-white placeholder-gray-500 shadow-md outline-none font-medium text-sm text-left">
-                </div>
-            </div>
-        </div>
-
-        <!-- Live stats strip (v2.0) -->
-        <div id="stats-strip" class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-            <div class="bg-dark-card border border-dark-border rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-400">
-                <span><i class="ph-bold ph-users text-brand-cyan"></i> <span id="stat-connections">1</span> connected</span>
-                <span><i class="ph-bold ph-clock text-brand-cyan"></i> Uptime <span id="stat-uptime" class="text-gray-200 font-semibold">0s</span></span>
-                <span><i class="ph-bold ph-download-simple text-brand-cyan"></i> Downloaded <span id="stat-downloaded" class="text-gray-200 font-semibold">0 MB</span></span>
-                <span><i class="ph-bold ph-upload-simple text-brand-cyan"></i> Uploaded <span id="stat-uploaded" class="text-gray-200 font-semibold">0 MB</span></span>
-                <span class="flex items-center gap-2 flex-1 min-w-[160px]"><i class="ph-bold ph-hard-drive text-brand-cyan"></i> Disk free <span id="stat-disk" class="text-gray-200 font-semibold">--</span>
-                    <span class="flex-1 h-2 bg-dark-bg rounded-full overflow-hidden border border-dark-border"><span id="stat-disk-bar" class="block h-full bg-gradient-to-r from-[#3B82F6] to-[#EC4899]" style="width:0%"></span></span>
+                <span id="status-pill" class="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+                    LAN Active &middot; <span id="online-count">1</span> online
                 </span>
             </div>
         </div>
 
-        <!-- Selection toolbar (v2.0) -->
-        <div id="selection-toolbar" class="hidden max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-            <div class="bg-brand-purple/15 border border-brand-purple/40 rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-3 text-sm">
-                <span class="font-bold text-white"><span id="selection-count">0</span> selected</span>
-                <button id="bulk-download-btn" class="bg-gradient-to-r from-[#3B82F6] to-[#EC4899] text-white text-xs font-bold rounded-lg px-3 py-2 flex items-center gap-1.5"><i class="ph-bold ph-download-simple"></i> Bulk Download (Zip)</button>
-                <button id="bulk-delete-btn" class="bg-red-500/90 hover:bg-red-500 text-white text-xs font-bold rounded-lg px-3 py-2 flex items-center gap-1.5"><i class="ph-bold ph-trash"></i> Delete to Trash</button>
-                <button id="selection-clear-btn" class="bg-dark-card border border-dark-border text-gray-300 text-xs font-bold rounded-lg px-3 py-2">Clear</button>
+        <!-- Live stats strip (v2.0, restyled v2.1) -->
+        <div id="stats-strip" class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-3">
+            <div class="glass-panel bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-2xl shadow-card px-4 py-2.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
+                <span><i class="ph-bold ph-users text-brand-cyan"></i> <span id="stat-connections" class="text-slate-900 dark:text-slate-100 font-semibold">1</span> connected</span>
+                <span><i class="ph-bold ph-clock text-brand-cyan"></i> Uptime <span id="stat-uptime" class="text-slate-900 dark:text-slate-100 font-semibold">0s</span></span>
+                <span><i class="ph-bold ph-download-simple text-brand-cyan"></i> Downloaded <span id="stat-downloaded" class="text-slate-900 dark:text-slate-100 font-semibold">0 MB</span></span>
+                <span><i class="ph-bold ph-upload-simple text-brand-cyan"></i> Uploaded <span id="stat-uploaded" class="text-slate-900 dark:text-slate-100 font-semibold">0 MB</span></span>
+                <span class="flex items-center gap-2 flex-1 min-w-[160px]"><i class="ph-bold ph-hard-drive text-brand-cyan"></i> Disk free <span id="stat-disk" class="text-slate-900 dark:text-slate-100 font-semibold">--</span>
+                    <span class="flex-1 h-2 bg-slate-100 dark:bg-dark-bg rounded-full overflow-hidden border border-slate-200 dark:border-dark-border"><span id="stat-disk-bar" class="block h-full bg-gradient-to-r from-cyan-400 to-brand-purple" style="width:0%"></span></span>
+                </span>
             </div>
         </div>
 
-        <!-- Filters and Breadcrumbs -->
-        <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2">
+        <!-- Filters, breadcrumbs and toolbar -->
+        <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-2">
 
-            <!-- Breadcrumbs -->
-            <div class="bg-dark-card border border-dark-border rounded-xl p-3 mb-6 flex items-center gap-2 overflow-x-auto no-scrollbar"
+            <!-- Breadcrumbs (pill crumbs, populated by JS) -->
+            <nav aria-label="Breadcrumb" class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1"
                 id="breadcrumbs">
                 <!-- Populated by JS -->
-            </div>
+            </nav>
 
             <!-- Category and View Toolbar -->
-            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
-                <!-- Categories -->
-                <div class="flex flex-wrap items-center gap-2 md:gap-3" id="category-filters">
-                    <button class="filter-chip active" data-filter="all"><i class="ph ph-squares-four mr-1"></i> All</button>
-                    <button class="filter-chip" data-filter="folders"><i class="ph ph-folder mr-1"></i> Folders</button>
-                    <button class="filter-chip" data-filter="windows"><i class="ph ph-windows-logo mr-1"></i> Windows</button>
-                    <button class="filter-chip" data-filter="android"><i class="ph ph-android-logo mr-1"></i> Android</button>
-                    <button class="filter-chip" data-filter="media"><i class="ph ph-play-circle mr-1"></i> Media</button>
-                    <button class="filter-chip" data-filter="docs"><i class="ph ph-file-text mr-1"></i> Docs</button>
-                    <button class="filter-chip" data-filter="archives"><i class="ph ph-file-zip mr-1"></i> Archives</button>
+            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mt-3 mb-5">
+                <!-- Categories: segmented pill control -->
+                <div class="flex flex-wrap items-center gap-1 bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/70 dark:border-white/10 rounded-full p-1 w-fit max-w-full overflow-x-auto no-scrollbar shadow-sm" id="category-filters" role="tablist" aria-label="Filter by type">
+                    <button class="filter-chip active" data-filter="all"><i class="ph ph-squares-four mr-1"></i>All</button>
+                    <button class="filter-chip" data-filter="folders"><i class="ph ph-folder mr-1"></i>Folders</button>
+                    <button class="filter-chip" data-filter="windows"><i class="ph ph-windows-logo mr-1"></i>Windows</button>
+                    <button class="filter-chip" data-filter="android"><i class="ph ph-android-logo mr-1"></i>Android</button>
+                    <button class="filter-chip" data-filter="media"><i class="ph ph-play-circle mr-1"></i>Media</button>
+                    <button class="filter-chip" data-filter="docs"><i class="ph ph-file-text mr-1"></i>Docs</button>
+                    <button class="filter-chip" data-filter="archives"><i class="ph ph-file-zip mr-1"></i>Archives</button>
                 </div>
 
-                <!-- Right Controls: Upload, Sort, View -->
-                <div class="flex flex-wrap items-center gap-3 shrink-0">
+                <!-- Right Controls: New Folder, Upload, Sort, View -->
+                <div class="flex flex-wrap items-center gap-2.5 shrink-0">
                     <!-- Hidden File Input -->
                     <input type="file" id="upload-input" class="hidden" multiple>
 
                     <!-- New Folder Button (v2.0) -->
-                    <button id="new-folder-btn" class="bg-dark-card hover:bg-dark-hover border border-dark-border text-white text-sm font-semibold rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 transition-all cursor-pointer" title="Create a new folder here">
+                    <button id="new-folder-btn" class="bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-sm font-semibold rounded-full px-4 py-2.5 min-h-10 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm" title="Create a new folder here">
                         <i class="ph-bold ph-folder-plus text-lg text-brand-cyan"></i> New Folder
                     </button>
 
                     <!-- Upload Button -->
-                    <button id="upload-btn" class="bg-gradient-to-r from-[#3B82F6] via-[#A855F7] to-[#EC4899] hover:opacity-90 active:scale-95 text-white text-sm font-semibold rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 transition-all shadow-lg shadow-brand-purple/20 cursor-pointer border-0" title="Upload files to this directory">
+                    <button id="upload-btn" class="bg-gradient-to-r from-cyan-500 via-brand-purple to-pink-500 hover:opacity-90 active:scale-95 text-white text-sm font-semibold rounded-full px-5 py-2.5 min-h-10 flex items-center justify-center gap-2 transition-all shadow-lg shadow-brand-purple/25 cursor-pointer border-0" title="Upload files to this directory">
                         <i class="ph-bold ph-upload-simple text-lg"></i> Upload
                     </button>
 
-                    <!-- Divider -->
-                    <div class="hidden sm:block w-px h-8 bg-dark-border"></div>
-
                     <!-- Sort -->
-                    <select id="sort-select" class="bg-dark-card border border-dark-border text-sm rounded-lg px-3 py-2 text-gray-300 focus:outline-none focus:border-brand-cyan">
+                    <select id="sort-select" aria-label="Sort files" class="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-sm rounded-full px-3.5 py-2.5 min-h-10 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-brand-cyan cursor-pointer shadow-sm">
                         <option value="name">Sort by Name</option>
                         <option value="size">Sort by Size</option>
                         <option value="date">Sort by Date</option>
                     </select>
 
-                    <!-- View Toggle -->
-                    <div class="flex items-center bg-dark-card rounded-lg p-1 border border-dark-border">
-                        <button data-view="grid" class="view-toggle active w-8 h-8 rounded shrink-0 flex items-center justify-center text-brand-cyan transition-colors" title="Grid View">
+                    <!-- View Toggle: segmented control -->
+                    <div class="flex items-center bg-slate-100 dark:bg-white/5 rounded-full p-1" role="group" aria-label="View mode">
+                        <button data-view="grid" class="view-toggle active" title="Grid View" aria-label="Grid view">
                             <i class="ph-fill ph-squares-four text-xl"></i>
                         </button>
-                        <button data-view="list" class="view-toggle w-8 h-8 rounded shrink-0 flex items-center justify-center text-gray-500 transition-colors" title="List View">
+                        <button data-view="list" class="view-toggle" title="List View" aria-label="List view">
                             <i class="ph-fill ph-list-dashes text-xl"></i>
                         </button>
                     </div>
@@ -257,110 +266,134 @@
 
             <!-- Main File Grid/List -->
             <div id="file-container"
-                class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 pb-24">
-                <!-- Initial Loading state -->
-                <div class="col-span-full flex justify-center py-20 text-gray-500">
-                    <div class="animate-spin text-3xl"><i class="ph ph-circle-notch"></i></div>
+                class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-5 pb-32">
+                <!-- Initial Loading state: skeleton cards -->
+                <div class="col-span-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-5" aria-hidden="true">
+                    <div class="rounded-card border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card overflow-hidden"><div class="skeleton aspect-[4/3]"></div><div class="p-3.5 space-y-2"><div class="skeleton h-3.5 rounded-full w-4/5"></div><div class="skeleton h-3 rounded-full w-2/5"></div></div></div>
+                    <div class="rounded-card border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card overflow-hidden"><div class="skeleton aspect-[4/3]"></div><div class="p-3.5 space-y-2"><div class="skeleton h-3.5 rounded-full w-3/5"></div><div class="skeleton h-3 rounded-full w-1/2"></div></div></div>
+                    <div class="rounded-card border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card overflow-hidden"><div class="skeleton aspect-[4/3]"></div><div class="p-3.5 space-y-2"><div class="skeleton h-3.5 rounded-full w-4/5"></div><div class="skeleton h-3 rounded-full w-2/5"></div></div></div>
+                    <div class="rounded-card border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card overflow-hidden"><div class="skeleton aspect-[4/3]"></div><div class="p-3.5 space-y-2"><div class="skeleton h-3.5 rounded-full w-3/5"></div><div class="skeleton h-3 rounded-full w-1/2"></div></div></div>
+                    <div class="hidden lg:block rounded-card border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card overflow-hidden"><div class="skeleton aspect-[4/3]"></div><div class="p-3.5 space-y-2"><div class="skeleton h-3.5 rounded-full w-4/5"></div><div class="skeleton h-3 rounded-full w-2/5"></div></div></div>
+                    <div class="hidden xl:block rounded-card border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card overflow-hidden"><div class="skeleton aspect-[4/3]"></div><div class="p-3.5 space-y-2"><div class="skeleton h-3.5 rounded-full w-3/5"></div><div class="skeleton h-3 rounded-full w-1/2"></div></div></div>
                 </div>
+            </div>
         </div>
     </div> <!-- End of App View -->
+
+    <!-- Floating selection toolbar (v2.1: glass pill, bottom centre) -->
+    <div id="selection-toolbar" class="hidden fixed bottom-5 inset-x-0 z-50 px-4">
+        <div class="glass-panel mx-auto w-fit max-w-full bg-white/90 dark:bg-[#1A1E32]/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-full pl-5 pr-2 py-2 flex flex-wrap items-center justify-center gap-2 text-sm shadow-lift">
+            <span class="font-bold text-slate-900 dark:text-white whitespace-nowrap"><span id="selection-count">0</span> selected</span>
+            <button id="bulk-download-btn" class="bg-gradient-to-r from-cyan-500 to-brand-purple text-white text-xs font-bold rounded-full px-3.5 py-2 min-h-9 flex items-center gap-1.5"><i class="ph-bold ph-download-simple"></i> Bulk Download (Zip)</button>
+            <button id="bulk-delete-btn" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-full px-3.5 py-2 min-h-9 flex items-center gap-1.5"><i class="ph-bold ph-trash"></i> Delete to Trash</button>
+            <button id="selection-clear-btn" class="bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-full px-3.5 py-2 min-h-9">Clear</button>
+        </div>
+    </div>
 
     <!-- Media Player Modal -->
     <div id="media-modal"
         class="fixed inset-0 hidden flex flex-col overflow-hidden" style="z-index: 9999; background: #000 !important;">
-        
+
         <!-- Header Controls -->
-        <div class="absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between" style="z-index: 10000;">
-            <div class="flex items-center gap-4">
-                <button id="close-modal" class="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 hover:bg-red-500 text-white flex items-center justify-center transition-all shadow-2xl cursor-pointer" style="pointer-events: auto !important;" title="Close (Esc)">
+        <div class="absolute top-0 left-0 right-0 p-4 md:p-5 flex items-start justify-between bg-gradient-to-b from-black/70 to-transparent pb-12" style="z-index: 10000;">
+            <div class="flex items-center gap-3">
+                <button id="close-modal" class="w-11 h-11 min-w-11 rounded-full bg-black/60 backdrop-blur-md border border-white/10 hover:bg-red-500 text-white flex items-center justify-center transition-all shadow-2xl cursor-pointer" style="pointer-events: auto !important;" title="Close (Esc)" aria-label="Close media">
                     <i class="ph-bold ph-x text-xl"></i>
                 </button>
-                <div class="flex flex-col">
-                    <h2 id="media-title" class="font-bold text-white text-lg drop-shadow-xl truncate max-w-[160px] sm:max-w-md">Media File</h2>
+                <div class="flex flex-col min-w-0">
+                    <h2 id="media-title" class="font-bold text-white text-base md:text-lg drop-shadow-xl truncate max-w-[180px] sm:max-w-md">Media File</h2>
                     <span id="media-counter" class="text-xs text-brand-cyan font-bold tracking-widest uppercase drop-shadow-xl hidden">1 / 1</span>
                 </div>
             </div>
-            
-            <div class="flex items-center gap-3">
-                <a id="media-download" href="#" download class="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 hover:bg-brand-cyan text-white flex items-center justify-center transition-all shadow-2xl" style="pointer-events: auto !important;" title="Download Source">
+
+            <div class="flex items-center gap-2.5">
+                <a id="media-download" href="#" download class="w-11 h-11 min-w-11 rounded-full bg-black/60 backdrop-blur-md border border-white/10 hover:bg-brand-cyan text-white flex items-center justify-center transition-all shadow-2xl" style="pointer-events: auto !important;" title="Download Source" aria-label="Download">
                     <i class="ph-bold ph-download-simple text-xl"></i>
                 </a>
             </div>
         </div>
 
         <!-- Navigation Arrows (Floating) -->
-        <button id="media-prev" class="hidden absolute top-1/2 -translate-y-1/2 left-2 md:left-6 w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/40 backdrop-blur-md border border-white/5 hover:bg-brand-purple hover:border-brand-purple/50 text-white flex items-center justify-center transition-all z-50 group shadow-2xl">
+        <button id="media-prev" class="hidden absolute top-1/2 -translate-y-1/2 left-2 md:left-6 w-12 h-12 md:w-14 md:h-14 rounded-full bg-black/40 backdrop-blur-md border border-white/5 hover:bg-brand-purple hover:border-brand-purple/50 text-white flex items-center justify-center transition-all z-50 group shadow-2xl" aria-label="Previous media">
             <i class="ph-bold ph-caret-left text-2xl md:text-3xl group-hover:-translate-x-1 transition-transform"></i>
         </button>
-        <button id="media-next" class="hidden absolute top-1/2 -translate-y-1/2 right-2 md:right-6 left-auto w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/40 backdrop-blur-md border border-white/5 hover:bg-brand-purple hover:border-brand-purple/50 text-white flex items-center justify-center transition-all z-50 group shadow-2xl">
+        <button id="media-next" class="hidden absolute top-1/2 -translate-y-1/2 right-2 md:right-6 left-auto w-12 h-12 md:w-14 md:h-14 rounded-full bg-black/40 backdrop-blur-md border border-white/5 hover:bg-brand-purple hover:border-brand-purple/50 text-white flex items-center justify-center transition-all z-50 group shadow-2xl" aria-label="Next media">
             <i class="ph-bold ph-caret-right text-2xl md:text-3xl group-hover:translate-x-1 transition-transform"></i>
         </button>
-        
+
         <div class="flex-1 w-full h-full flex items-center justify-center min-h-0 relative z-10" id="media-container">
             <!-- Media content injected by JS -->
         </div>
+
+        <!-- Keyboard hints -->
+        <div class="hidden md:flex absolute bottom-4 left-1/2 -translate-x-1/2 z-50 items-center gap-4 text-[11px] font-medium text-white/60 bg-black/50 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 pointer-events-none">
+            <span><kbd class="text-white/80">←</kbd> <kbd class="text-white/80">→</kbd> navigate</span>
+            <span><kbd class="text-white/80">Esc</kbd> close</span>
+            <span><kbd class="text-white/80">Space</kbd> play / pause</span>
+        </div>
     </div>
 
-    <!-- Upload Progress Modal/Toast (Sticky Bottom) -->
-    <div id="upload-progress-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-lg z-[60] hidden">
-        <div class="bg-dark-card border border-dark-border rounded-xl shadow-2xl p-4 transform transition-all">
+    <!-- Upload Progress (v2.1: floating glass card) -->
+    <div id="upload-progress-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60] hidden">
+        <div class="glass-panel bg-white/90 dark:bg-[#1A1E32]/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl shadow-lift p-4 transform transition-all">
             <div class="flex justify-between items-center mb-3">
-                <div class="flex items-center gap-2 font-bold text-white text-sm">
-                    <i class="ph-fill ph-upload-simple text-[#EC4899] animate-bounce"></i>
-                    <span id="upload-status-text">Uploading files...</span>
+                <div class="flex items-center gap-2 font-bold text-slate-900 dark:text-white text-sm min-w-0">
+                    <i class="ph-fill ph-upload-simple text-pink-500 animate-bounce shrink-0"></i>
+                    <span id="upload-status-text" class="truncate">Uploading files...</span>
                 </div>
-                <div id="upload-percentage" class="text-brand-purple font-bold">0%</div>
+                <div id="upload-percentage" class="text-brand-purple font-bold shrink-0 ml-2">0%</div>
             </div>
             <!-- Progress Bar Track -->
-            <div class="w-full bg-dark-bg rounded-full h-2.5 mb-2 overflow-hidden border border-dark-border">
+            <div class="w-full bg-slate-100 dark:bg-dark-bg rounded-full h-2.5 mb-2 overflow-hidden border border-slate-200 dark:border-dark-border">
                 <div id="upload-progress-bar" class="bg-gradient-to-r from-[#3B82F6] to-[#EC4899] h-2.5 rounded-full" style="width: 0%; transition: width 0.3s ease;"></div>
             </div>
             <!-- Stats -->
-            <div class="flex justify-between text-xs text-gray-400">
+            <div class="flex justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <span id="upload-size-text">0 MB / 0 MB</span>
-                <span id="upload-speed-text">0 MB/s</span>
+                <span id="upload-eta" class="truncate"></span>
+                <span id="upload-speed-text" class="shrink-0">0 MB/s</span>
             </div>
         </div>
     </div>
 
     <!-- Drag & drop overlay (v2.0) -->
-    <div id="drop-overlay" class="hidden fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-        <div class="border-2 border-dashed border-brand-cyan rounded-2xl px-10 py-12 text-center bg-dark-card/80">
+    <div id="drop-overlay" class="hidden fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+        <div class="glass-panel border-2 border-dashed border-brand-cyan rounded-3xl px-10 py-12 text-center bg-white dark:bg-dark-card/90 shadow-2xl">
             <i class="ph-fill ph-upload-simple text-5xl text-brand-cyan"></i>
-            <p class="text-white font-bold text-lg mt-3">Drop files to upload here</p>
-            <p class="text-gray-400 text-sm">They will be uploaded to the current folder</p>
+            <p class="text-slate-900 dark:text-white font-bold text-lg mt-3">Drop files to upload here</p>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">They will be uploaded to the current folder</p>
         </div>
     </div>
 
     <!-- QR Modal (v2.0) -->
-    <div id="qr-modal" class="hidden fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-xs text-center shadow-2xl">
-            <h3 class="text-white font-bold text-lg mb-1">Scan to connect</h3>
-            <p class="text-gray-400 text-sm mb-4">Open this server on your phone / TV</p>
-            <img id="qr-image" alt="QR code" class="w-56 h-56 mx-auto rounded-lg bg-white p-2" />
+    <div id="qr-modal" class="hidden fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-3xl p-6 w-full max-w-xs text-center shadow-2xl">
+            <h3 class="text-slate-900 dark:text-white font-bold text-lg mb-1">Scan to connect</h3>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mb-4">Open this server on your phone / TV</p>
+            <img id="qr-image" alt="QR code" class="w-56 h-56 mx-auto rounded-2xl bg-white p-2 border border-slate-200" />
             <p id="qr-url" class="text-brand-cyan text-sm font-mono break-all mt-4"></p>
-            <button id="qr-close" class="mt-5 w-full bg-dark-border hover:bg-gray-700 text-white font-semibold py-2 rounded-lg">Close</button>
+            <button id="qr-close" class="mt-5 w-full bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-semibold py-2.5 min-h-10 rounded-xl">Close</button>
         </div>
     </div>
 
     <!-- Trash Modal (v2.0) -->
-    <div id="trash-modal" class="hidden fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+    <div id="trash-modal" class="hidden fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-3xl p-6 w-full max-w-lg shadow-2xl">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-white font-bold text-lg flex items-center gap-2"><i class="ph-bold ph-trash text-brand-cyan"></i> Trash</h3>
-                <button id="trash-close" class="w-9 h-9 rounded-full bg-dark-bg border border-dark-border text-gray-300 hover:text-white flex items-center justify-center"><i class="ph-bold ph-x"></i></button>
+                <h3 class="text-slate-900 dark:text-white font-bold text-lg flex items-center gap-2"><i class="ph-bold ph-trash text-brand-cyan"></i> Trash</h3>
+                <button id="trash-close" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-dark-bg border border-slate-200 dark:border-dark-border text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center" aria-label="Close trash"><i class="ph-bold ph-x"></i></button>
             </div>
-            <p class="text-gray-400 text-sm mb-3">Deleted files are kept here — restore them or empty the trash to delete permanently.</p>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mb-3">Deleted files are kept here — restore them or empty the trash to delete permanently.</p>
             <div id="trash-list" class="flex flex-col gap-2 max-h-80 overflow-y-auto"></div>
-            <button id="trash-empty-btn" class="mt-4 w-full bg-red-500/90 hover:bg-red-500 text-white font-semibold py-2 rounded-lg">Empty Trash (permanent)</button>
+            <button id="trash-empty-btn" class="mt-4 w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 min-h-10 rounded-xl">Empty Trash (permanent)</button>
         </div>
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[90] flex flex-col gap-2 items-end"></div>
 
     <!-- Plyr Custom Video Player JS -->
     <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
-    <script src="js/app.js?v=9"></script>
+    <script src="js/app.js?v=10"></script>
 </body>
 </html>
