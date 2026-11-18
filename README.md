@@ -20,6 +20,25 @@ A high-speed, fully responsive LAN file server that turns your computer into a p
 
 ---
 
+
+---
+
+## 🆕 What's new in v2.0 (2026-11-18)
+
+- **File manager** — New Folder, Rename, and Delete-to-Trash, with a Trash view (Restore / Empty Trash). Nothing is permanently deleted until you empty the trash.
+- **Multi-select** — Checkboxes on every card, bulk Zip download and bulk delete from the selection toolbar.
+- **Thumbnails** — Image and video cards show real thumbnails (cached, generated with FFmpeg).
+- **Subtitles** — Sibling `.srt`/`.vtt` files appear as caption tracks in the player (`.srt` is converted to WebVTT on the fly).
+- **Resume playback** — Videos pick up where you left off (saved every 5s).
+- **Text/code preview** — `.txt`, `.md`, `.json`, `.js`, `.py` and more open in a readable preview instead of downloading.
+- **Drag & drop upload** — Drop files anywhere on the file grid to upload them.
+- **QR code** — Header button shows a QR code for the LAN address, so phones/TVs can join instantly.
+- **Live stats strip** — Connections, uptime, downloaded/uploaded totals, and a disk-free bar, refreshed every 5s.
+- **Faster zips & streaming** — Zip level 1 (was 9), proper suffix ranges, HEAD/ETag/416 handling.
+- **Safer** — Fixed directory-traversal prefix bug, internal `.speed-trash`/`.speed-cache` folders are hidden, security headers added.
+
+See [CHANGELOG.md](CHANGELOG.md) for the full list. Screenshot in `screenshots/preview.png` is from v1.x — the v2.0 UI adds the stats strip, selection toolbar, QR/Trash buttons and thumbnails on top of the same layout.
+
 # 🌟 প্রিমিয়াম ল্যান ফাইল এবং মিডিয়া সার্ভার
 
 একটি অতি-দ্রুত এবং রেস্পন্সিভ ল্যান ফাইল সার্ভার যা আপনার কম্পিউটারকে একটি প্রিমিয়াম পার্সোনাল ক্লাউডে পরিণত করে। এটি Node.js, Express এবং চমৎকার TailwindCSS গ্লাস-মর্ফিজম ডিজাইন দিয়ে তৈরি। এটি যেকোনো মাপের ফাইল (এমনকি ১০ জিবি বা তার বেশি!) আপলোড এবং সরাসরি ডাউনলোড সাপোর্ট করে। এতে একটি বিল্ট-ইন মিডিয়া প্লেয়ার রয়েছে যা FFmpeg-এর সাথে সংযুক্ত, যার মাধ্যমে আপনি আপনার ব্রাউজারেই সরাসরি ডুয়াল-অডিও (যেমন- হিন্দি ও ইংরেজি) MKV এবং MP4 মুভি বাফার ছাড়াই স্ট্রিম করতে পারবেন।
