@@ -105,8 +105,8 @@ function formatUptime(sec) {
 function thumbHtml(fullPath, ext, fallbackSvg) {
     if (!THUMB_EXTS.includes(ext)) return '';
     const url = `/api/thumb?path=${encodeURIComponent(fullPath)}`;
-    const fallback = fallbackSvg ? `<span class="thumb-fallback" style="display:none;width:100%;height:100%">${fallbackSvg}</span>` : '';
-    return `<img src="${url}" alt="" loading="lazy" class="w-full h-full object-cover rounded-lg" onerror="this.style.display='none';var f=this.nextElementSibling;if(f)f.style.display='block';">${fallback}`;
+    const fallback = fallbackSvg ? `<span class="thumb-fallback">${fallbackSvg}</span>` : '';
+    return `<img src="${url}" alt="" loading="lazy" class="w-full h-full object-cover" onerror="this.style.display='none';var f=this.nextElementSibling;if(f)f.style.display='flex';">${fallback}`;
 }
 window.toggleSelectCheckbox = function (cb) {
     if (cb.checked) selectedPaths.add(cb.dataset.path);
@@ -177,18 +177,18 @@ async function openTrash() {
     const modal = document.getElementById('trash-modal');
     const list = document.getElementById('trash-list');
     if (!modal || !list) return;
-    list.innerHTML = '<p class="text-gray-400 text-sm py-6 text-center">Loading trash...</p>';
+    list.innerHTML = '<p class="text-slate-500 dark:text-slate-400 text-sm py-6 text-center">Loading trash...</p>';
     modal.classList.remove('hidden');
     try {
         const res = await fetch('/api/trash');
         const data = await res.json();
         const items = data.items || [];
-        if (items.length === 0) { list.innerHTML = '<p class="text-gray-400 text-sm py-6 text-center">Trash is empty</p>'; return; }
+        if (items.length === 0) { list.innerHTML = '<p class="text-slate-500 dark:text-slate-400 text-sm py-6 text-center">Trash is empty</p>'; return; }
         list.innerHTML = '';
         items.forEach(it => {
             const row = document.createElement('div');
-            row.className = 'flex items-center gap-3 p-3 rounded-xl bg-dark-bg border border-dark-border';
-            row.innerHTML = `<div class="flex-1 min-w-0"><p class="text-white text-sm font-medium truncate" title="${it.name}">${it.name}</p><p class="text-xs text-gray-400">${it.isDirectory ? 'Folder' : formatBytes(it.size)} &bull; ${formatDate(it.mtime)}</p></div>
+            row.className = 'flex items-center gap-3 p-3 rounded-2xl bg-white/70 dark:bg-white/[0.05] border border-white/70 dark:border-white/10 backdrop-blur';
+            row.innerHTML = `<div class="flex-1 min-w-0"><p class="text-slate-900 dark:text-white text-sm font-medium truncate" title="${it.name}">${it.name}</p><p class="text-xs text-slate-500 dark:text-slate-400">${it.isDirectory ? 'Folder' : formatBytes(it.size)} &bull; ${formatDate(it.mtime)}</p></div>
                 <button class="bg-brand-cyan/15 text-brand-cyan text-xs font-bold rounded-lg px-3 py-2" data-restore="${it.name.replace(/"/g, '&quot;')}">Restore</button>`;
             row.querySelector('[data-restore]').onclick = async () => {
                 const r = await fetch('/api/trash/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: it.name }) });
@@ -199,7 +199,7 @@ async function openTrash() {
             };
             list.appendChild(row);
         });
-    } catch (e) { list.innerHTML = '<p class="text-red-400 text-sm py-6 text-center">Failed to load trash</p>'; }
+    } catch (e) { list.innerHTML = '<p class="text-red-500 dark:text-red-400 text-sm py-6 text-center">Failed to load trash</p>'; }
 }
 async function emptyTrash() {
     if (!confirm('Permanently delete everything in trash? This cannot be undone.')) return;
@@ -304,6 +304,7 @@ function toggleTheme() {
         body.classList.add('dark');
         localStorage.setItem('lan-server-theme', 'dark');
     }
+    if (themeToggleBtn) themeToggleBtn.setAttribute('aria-pressed', String(body.classList.contains('dark')));
 }
 
 // Configuration
@@ -414,11 +415,8 @@ function showPrevMedia() {
 // File Loading & Rendering
 async function loadFiles(dirPath) {
     try {
-        // Show a simple clean loader
-        fileContainer.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-24">
-            <div class="w-10 h-10 border-4 border-dark-border border-t-brand-cyan rounded-full animate-spin mb-3"></div>
-            <h3 class="text-sm font-semibold text-gray-400">Loading files...</h3>
-        </div>`;
+        // Skeleton shimmer cards while loading (v2.1)
+        fileContainer.innerHTML = `<div class="col-span-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-5" aria-hidden="true">${Array.from({ length: 6 }).map(() => `<div class="rounded-card border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card overflow-hidden"><div class="skeleton aspect-[4/3]"></div><div class="p-3.5 space-y-2"><div class="skeleton h-3.5 rounded-full w-4/5"></div><div class="skeleton h-3 rounded-full w-2/5"></div></div></div>`).join('')}</div>`;
 
         // Ensure a 500ms minimum smooth transition as requested
         await new Promise(r => setTimeout(r, 500));
@@ -446,7 +444,28 @@ async function loadFiles(dirPath) {
         renderFiles();
     } catch (err) {
         showToast('Failed to load directory', 'error');
-        fileContainer.innerHTML = '<div class="col-span-full text-center py-20 text-red-500"><i class="ph ph-warning-circle text-4xl mb-2"></i><p>Could not load files</p></div>';
+        fileContainer.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+            <div class="w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mb-4"><i class="ph ph-warning-circle text-3xl"></i></div>
+            <p class="text-lg font-semibold text-slate-900 dark:text-white">Could not load this folder</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-5">Check the server is still running, then try again.</p>
+            <button onclick="loadFiles(currentPath)" class="bg-gradient-to-r from-cyan-500 to-brand-purple text-white text-sm font-semibold rounded-full px-5 py-2.5 min-h-10">Retry</button>
+        </div>`;
+    }
+}
+
+// Compact page header (v2.1): folder name, item count, total size
+function updateFolderHeader(files) {
+    const nameEl = document.getElementById('folder-name');
+    const countEl = document.getElementById('folder-count');
+    const sizeEl = document.getElementById('folder-size');
+    if (nameEl) {
+        const parts = (currentPath || '').split('/').filter(Boolean);
+        nameEl.textContent = parts.length ? parts[parts.length - 1] : 'All Files';
+    }
+    if (countEl) countEl.textContent = `${files.length} item${files.length === 1 ? '' : 's'}`;
+    if (sizeEl) {
+        const total = files.reduce((a, f) => a + (f.isDirectory ? 0 : (f.size || 0)), 0);
+        sizeEl.textContent = formatBytes(total);
     }
 }
 
@@ -501,34 +520,42 @@ function renderFiles() {
         return 0;
     });
 
+    updateFolderHeader(displayFiles);
     fileContainer.innerHTML = '';
 
     if (displayFiles.length === 0) {
+        const searching = searchTerm.length > 0;
         fileContainer.innerHTML = `
-            <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
-                <i class="ph ph-folder-open text-6xl mb-4"></i>
-                <p class="text-lg">No files found</p>
+            <div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+                <div class="w-20 h-20 rounded-3xl bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 flex items-center justify-center mb-5">
+                    <i class="ph ${searching ? 'ph-magnifying-glass' : 'ph-folder-open'} text-4xl"></i>
+                </div>
+                <p class="text-lg font-semibold text-slate-900 dark:text-white">${searching ? `No results for &ldquo;${searchTerm}&rdquo;` : 'This folder is empty'}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-6">${searching ? 'Try a different search, or clear it to see everything here.' : 'Upload files or create a folder to get started.'}</p>
+                ${searching
+                    ? `<button onclick="document.getElementById('search-input').value='';document.getElementById('search-input').dispatchEvent(new Event('input'))" class="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white text-sm font-semibold rounded-full px-5 py-2.5 min-h-10">Clear search</button>`
+                    : `<button onclick="document.getElementById('upload-input').click()" class="bg-gradient-to-r from-cyan-500 via-brand-purple to-pink-500 text-white text-sm font-semibold rounded-full px-5 py-2.5 min-h-10 shadow-lg shadow-brand-purple/25">Upload files</button>`}
             </div>
         `;
         return;
     }
 
     if (currentView === 'list') {
-        fileContainer.className = 'flex flex-col gap-2 pb-10';
+        fileContainer.className = 'flex flex-col gap-1.5 pb-32';
         fileContainer.innerHTML = `
-            <div class="hidden md:flex items-center px-4 py-3 text-xs font-semibold text-gray-500 tracking-wider uppercase border-b border-dark-border mb-2">
+            <div class="hidden md:flex items-center px-4 py-2.5 text-xs font-semibold text-slate-400 dark:text-slate-500 tracking-wider uppercase border-b border-slate-200 dark:border-white/10 mb-1">
                 <div class="w-12"></div>
                 <div class="flex-1 min-w-0">Name</div>
                 <div class="w-48 px-2">Date Modified</div>
                 <div class="w-24 text-right px-2">Size</div>
-                <div class="w-20"></div>
+                <div class="w-28"></div>
             </div>
         `;
     } else {
-        fileContainer.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 pb-10';
+        fileContainer.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-5 pb-32';
     }
 
-    displayFiles.forEach(file => {
+    displayFiles.forEach((file, i) => {
         const fullPath = currentPath === '' ? `/${file.name}` : `${currentPath}/${file.name}`;
         const fileExt = file.isDirectory ? '' : file.name.split('.').pop().toLowerCase();
         const { svg, iconColorClass } = getFileIcon(file.isDirectory, fileExt);
@@ -539,34 +566,35 @@ function renderFiles() {
         const card = document.createElement('div');
 
         if (currentView === 'list') {
-            card.className = 'flex items-center gap-3 p-3 rounded-xl bg-dark-card border border-dark-border hover:bg-dark-hover transition-colors cursor-pointer group';
+            card.className = 'file-row card-enter flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/70 dark:bg-white/[0.05] backdrop-blur-xl border border-white/70 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/[0.09] shadow-sm cursor-pointer group';
+            card.style.animationDelay = Math.min(i, 12) * 30 + 'ms';
 
             const thumb = thumbHtml(fullPath, fileExt, '<div class="w-6 h-6">' + svg + '</div>');
             card.innerHTML = `
-                <label class="shrink-0 flex items-center" onclick="event.stopPropagation()"><input type="checkbox" class="select-checkbox w-4 h-4 accent-cyan-400" data-path="${fullPath.replace(/"/g, '&quot;')}" onchange="toggleSelectCheckbox(this)"></label>
-                <div class="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center ${colorOnly} bg-dark-bg group-hover:scale-110 transition-transform overflow-hidden">
+                <label class="card-checkbox shrink-0 flex items-center min-w-5" onclick="event.stopPropagation()"><input type="checkbox" class="select-checkbox w-5 h-5 accent-teal-400" data-path="${fullPath.replace(/"/g, '&quot;')}" onchange="toggleSelectCheckbox(this)"></label>
+                <div class="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center ${colorOnly} ${colorOnly.replace('text-', 'bg-').split(' ')[0]}/10 overflow-hidden">
                     ${thumb ? thumb : `<div class="w-6 h-6">${svg}</div>`}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h3 class="font-medium text-white truncate" title="${file.name}">${file.name}</h3>
-                    <p class="text-xs text-gray-400 md:hidden mt-0.5">${formattedSize} • ${dateModified}</p>
+                    <h3 class="font-semibold text-[14px] text-slate-900 dark:text-white truncate" title="${file.name}">${file.name}</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 md:hidden mt-0.5">${formattedSize} &bull; ${dateModified}</p>
                 </div>
-                <div class="w-48 hidden md:block text-sm text-gray-400 px-2 truncate">
+                <div class="w-48 hidden md:block text-sm text-slate-500 dark:text-slate-400 px-2 truncate">
                     ${dateModified}
                 </div>
-                <div class="w-24 hidden md:block text-sm text-gray-400 text-right px-2 whitespace-nowrap">
+                <div class="w-24 hidden md:block text-sm text-slate-500 dark:text-slate-400 text-right px-2 whitespace-nowrap">
                     ${formattedSize}
                 </div>
-                <div class="w-20 shrink-0 flex flex-row items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                    <button class="w-8 h-8 rounded border border-dark-border text-gray-300 hover:text-white hover:bg-dark-hover flex items-center justify-center transition-colors" title="Rename" onclick="event.stopPropagation(); renameItemByPath('${fullPath.replace(/'/g, "\\'")}', '${file.name.replace(/'/g, "\\'")}')"><i class="ph ph-pencil-simple"></i></button>
-                    <button class="w-8 h-8 rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors" title="Delete to trash" onclick="event.stopPropagation(); deleteItemByPath('${fullPath.replace(/'/g, "\\'")}', '${file.name.replace(/'/g, "\\'")}')"><i class="ph ph-trash"></i></button>
-                    ${file.isDirectory ?
-                    `<button class="w-8 h-8 rounded border border-dark-border text-gray-300 hover:text-white hover:bg-dark-hover flex items-center justify-center transition-colors" title="Open"><i class="ph ph-arrow-right"></i></button>`
-                    :
-                    `<a href="/api/download${fullPath}" download class="w-8 h-8 rounded border border-primary-500/30 text-primary-500 flex items-center justify-center hover:bg-primary-500/10 transition-colors" title="Download"><i class="ph ph-download-simple"></i></a>`
+                <div class="w-28 shrink-0 flex flex-row items-center justify-end gap-1.5">
+                    <button data-action="rename" class="w-9 h-9 min-w-9 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center transition-colors" title="Rename"><i class="ph ph-pencil-simple text-lg"></i></button>
+                    <button data-action="delete" class="w-9 h-9 min-w-9 rounded-full text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors" title="Delete to trash"><i class="ph ph-trash text-lg"></i></button>
+                    ${file.isDirectory
+                    ? `<button data-action="play" class="w-9 h-9 min-w-9 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center transition-colors" title="Open"><i class="ph ph-arrow-right text-lg"></i></button>`
+                    : `<a href="/api/download${fullPath}" download class="w-9 h-9 min-w-9 rounded-full text-brand-cyan hover:bg-brand-cyan/10 flex items-center justify-center transition-colors" title="Download"><i class="ph ph-download-simple text-lg"></i></a>`
                 }
                 </div>
             `;
+            bindCardActions(card, file, fullPath, fileExt);
         } else {
             const ext = file.isDirectory ? '' : file.name.split('.').pop().toLowerCase();
             const extLower = ext.toLowerCase();
@@ -585,46 +613,34 @@ function renderFiles() {
                 else if (['dmg', 'app', 'pkg', 'ipa'].includes(extLower)) cardClass = 'card-app-apple';
             }
 
-            // Flat, Sleek Professional Grid Card
-            card.className = `file-card bg-dark-card border border-dark-border rounded-2xl p-4 md:p-5 pb-14 md:pb-5 flex flex-col items-center justify-center text-center cursor-pointer relative overflow-hidden h-52 w-full group/card transition-all duration-200 hover:bg-dark-hover shadow-md ${cardClass}`;
+            // Modern media-style card (v2.1): thumbnail on top, meta below
+            const isThumb = THUMB_EXTS.includes(extLower);
+            const tileTint = colorOnly.replace('text-', 'bg-').split(' ')[0];
+            card.className = `file-card card-enter group/card glass-card relative flex flex-col overflow-hidden rounded-card shadow-card cursor-pointer ${cardClass}`;
+            card.style.animationDelay = Math.min(i, 12) * 30 + 'ms';
 
-            const { svg, iconColorClass } = getFileIcon(file.isDirectory, ext);
-            
-            // "icon-something text-color" -> extract "text-color"
-            const colorOnly = iconColorClass.split(' ').find(c => c.startsWith('text-')) || 'text-gray-400';
-            const glowColor = colorOnly.replace('text-', '');
-            
-            const gridThumb = thumbHtml(fullPath, ext, '<div class="w-8 h-8 md:w-10 md:h-10 relative z-10">' + svg + '</div>');
+            const gridThumb = thumbHtml(fullPath, ext, '<div class="w-10 h-10">' + svg + '</div>');
             card.innerHTML = `
-                <label class="absolute top-2 left-2 z-30 bg-black/50 rounded p-1" onclick="event.stopPropagation()"><input type="checkbox" class="select-checkbox w-4 h-4 accent-cyan-400" data-path="${fullPath.replace(/"/g, '&quot;')}" onchange="toggleSelectCheckbox(this)"></label>
-                <!-- Main Icon Box -->
-                <div class="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center mb-3 md:mb-4 ${colorOnly.replace('text-', 'bg-').split(' ')[0]}/10 border border-${glowColor.replace('text-', 'bg-')}/15 ${colorOnly} relative z-10 overflow-hidden">
-                    ${gridThumb ? gridThumb : `<div class="w-8 h-8 md:w-10 md:h-10 relative z-10">${svg}</div>`}
+                <div class="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-dark-bg shrink-0">
+                    ${gridThumb ? gridThumb : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br ${tileTint}/15 to-transparent ${colorOnly}"><div class="w-12 h-12">${svg}</div></div>`}
+                    <span class="absolute top-2 right-2 z-20 rounded-full bg-black/55 backdrop-blur px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">${file.isDirectory ? 'Folder' : (fileExt || 'File')}</span>
+                    ${!file.isDirectory ? `<button data-action="play" class="absolute inset-0 z-10 flex items-center justify-center bg-black/0 group-hover/card:bg-black/30 transition-colors" title="Play / Open" aria-label="Open"><span class="w-12 h-12 rounded-full bg-white/95 text-slate-900 flex items-center justify-center opacity-0 group-hover/card:opacity-100 scale-90 group-hover/card:scale-100 transition-all shadow-xl"><i class="ph-fill ph-play text-xl"></i></span></button>` : ''}
                 </div>
-                
-                <!-- File Name Area -->
-                <div class="w-full z-10 relative flex flex-col items-center flex-1 justify-between">
-                    <div class="w-full">
-                        <h3 class="font-bold text-sm md:text-[0.95rem] leading-tight text-white line-clamp-2 w-full px-1 group-hover/card:text-brand-cyan transition-colors" title="${file.name}">${file.name}</h3>
+                <label class="card-checkbox absolute top-2 left-2 z-30 bg-white/90 dark:bg-black/60 backdrop-blur rounded-lg p-1.5 shadow-sm" onclick="event.stopPropagation()"><input type="checkbox" class="select-checkbox w-4 h-4 accent-teal-400 block" data-path="${fullPath.replace(/"/g, '&quot;')}" onchange="toggleSelectCheckbox(this)"></label>
+                <div class="flex flex-1 flex-col gap-0.5 p-3">
+                    <h3 class="font-semibold text-[13px] leading-snug text-slate-900 dark:text-white line-clamp-2" title="${file.name}">${file.name}</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">${file.isDirectory ? 'Folder' : formattedSize} &bull; ${dateModified}</p>
+                    <div class="mt-auto pt-2 flex items-center gap-1.5">
+                        <button data-action="play" class="flex-1 min-h-9 py-2 bg-gradient-to-r from-cyan-500 to-brand-purple hover:opacity-90 text-white rounded-full text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-brand-purple/20 border-0">
+                            ${file.isDirectory ? '<i class="ph-bold ph-folder-open text-sm"></i> Open' : '<i class="ph-bold ph-play text-sm"></i> Play'}
+                        </button>
+                        ${!file.isDirectory ? `<a href="/api/download${fullPath}" download class="w-9 h-9 min-w-9 flex items-center justify-center bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-white rounded-full transition-colors" title="Download"><i class="ph-bold ph-download-simple text-base"></i></a>` : ''}
+                        <button data-action="rename" class="w-9 h-9 min-w-9 flex items-center justify-center bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-full transition-colors" title="Rename"><i class="ph-bold ph-pencil-simple text-base"></i></button>
+                        <button data-action="delete" class="w-9 h-9 min-w-9 flex items-center justify-center bg-slate-100 dark:bg-white/10 hover:bg-red-500/10 text-red-500 rounded-full transition-colors" title="Delete to trash"><i class="ph-bold ph-trash text-base"></i></button>
                     </div>
-                    <!-- Size/Type Badge -->
-                    <div class="mt-1 md:mt-2 bg-dark-bg/60 border border-white/5 rounded-md px-2 py-0.5 shadow-inner opacity-80 transition-all min-w-[max-content]">
-                        <p class="text-[0.65rem] md:text-[0.7rem] uppercase tracking-wider text-gray-300 font-extrabold">${file.isDirectory ? 'Directory' : formattedSize}</p>
-                    </div>
-                </div>
-
-                <!-- Action Overlay (Download/Play) - Always visible on mobile, clean fade-in on desktop hover -->
-                <div class="absolute inset-x-2 bottom-2 md:inset-x-3 md:bottom-3 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity duration-150 z-20 flex gap-1.5 md:gap-2">
-                    <button class="flex-1 py-1.5 md:py-2 bg-gradient-to-r from-[#3B82F6] to-[#EC4899] hover:opacity-90 text-white rounded-lg md:rounded-xl text-[10px] md:text-xs font-extrabold flex items-center justify-center gap-1 shadow-md shadow-brand-purple/10 border-0" onclick="handleCardAction(event, ${file.isDirectory}, '${fullPath.replace(/'/g, "\\'")}', '${fileExt}', '${file.name.replace(/'/g, "\\'")}')">
-                        ${file.isDirectory ? '<i class="ph-bold ph-folder-open text-xs md:text-sm"></i> Open' : '<i class="ph-bold ph-play text-xs md:text-sm"></i> Play'}
-                    </button>
-                    ${!file.isDirectory ?
-                    `<a href="/api/download${fullPath}" download class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-dark-bg/85 border border-white/10 hover:border-brand-cyan hover:text-brand-cyan text-white rounded-lg md:rounded-xl transition-colors font-bold" title="Download directly" onclick="event.stopPropagation()"><i class="ph-bold ph-download-simple text-sm md:text-lg"></i></a>`
-                    : ''}
-                    <button class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-dark-bg/85 border border-white/10 hover:border-white text-white rounded-lg md:rounded-xl transition-colors font-bold" title="Rename" onclick="event.stopPropagation(); renameItemByPath('${fullPath.replace(/'/g, "\\'")}', '${file.name.replace(/'/g, "\\'")}')"><i class="ph-bold ph-pencil-simple text-sm md:text-lg"></i></button>
-                    <button class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-dark-bg/85 border border-red-500/30 hover:border-red-500 text-red-400 rounded-lg md:rounded-xl transition-colors font-bold" title="Delete to trash" onclick="event.stopPropagation(); deleteItemByPath('${fullPath.replace(/'/g, "\\'")}', '${file.name.replace(/'/g, "\\'")}')"><i class="ph-bold ph-trash text-sm md:text-lg"></i></button>
                 </div>
             `;
+            bindCardActions(card, file, fullPath, fileExt);
         }
 
         card.onclick = (e) => {
@@ -641,6 +657,17 @@ function renderFiles() {
 }
 
 
+
+// Wire a rendered card's action buttons via closures (v2.1: no inline escaped paths).
+function bindCardActions(card, file, fullPath, fileExt) {
+    const bind = (sel, fn) => { const el = card.querySelector(sel); if (el) el.onclick = (e) => { e.stopPropagation(); fn(); }; };
+    bind('[data-action="rename"]', () => renameItemByPath(fullPath, file.name));
+    bind('[data-action="delete"]', () => deleteItemByPath(fullPath, file.name));
+    bind('[data-action="play"]', () => {
+        if (file.isDirectory) loadFiles(fullPath);
+        else handleFileClick(file, fullPath, fileExt);
+    });
+}
 
 // Handle the explicit button click inside the card
 window.handleCardAction = function (e, isDir, fullPath, ext, fileName) {
@@ -946,7 +973,7 @@ async function handleFileClick(file, path, ext) {
             if (!r.ok) throw new Error('Failed to load file');
             const text = await r.text();
             const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            mediaContainer.innerHTML = `<pre class="w-full h-full overflow-auto text-left text-sm text-gray-200 bg-dark-card p-6 whitespace-pre-wrap break-words" style="max-height:100%">${esc}</pre>`;
+            mediaContainer.innerHTML = `<pre class="w-full h-full overflow-auto text-left text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-2xl p-6 whitespace-pre-wrap break-words" style="max-height:100%">${esc}</pre>`;
         } catch (e) {
             mediaContainer.innerHTML = '<div class="p-8 text-center text-red-500"><p>Preview failed — try downloading instead.</p></div>';
         }
@@ -973,7 +1000,7 @@ function updateBreadcrumbs() {
 
     // Home crumb
     const homeBtn = document.createElement('button');
-    homeBtn.className = 'text-gray-500 hover:text-brand-cyan font-medium whitespace-nowrap px-2 py-1 rounded transition-colors';
+    homeBtn.className = 'shrink-0 w-9 h-9 min-w-9 rounded-full bg-white/70 dark:bg-white/5 border border-white/70 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white flex items-center justify-center transition-colors backdrop-blur';
     homeBtn.innerHTML = '<i class="ph-fill ph-house text-lg"></i>';
     homeBtn.onclick = () => loadFiles('/');
     breadcrumbsContainer.appendChild(homeBtn);
@@ -989,15 +1016,15 @@ function updateBreadcrumbs() {
 
         // Chevron
         const chevron = document.createElement('span');
-        chevron.className = 'text-gray-400 mx-1';
+        chevron.className = 'text-slate-300 dark:text-slate-600 mx-0.5 shrink-0';
         chevron.innerHTML = '<i class="ph ph-caret-right"></i>';
         breadcrumbsContainer.appendChild(chevron);
 
         // Crumb
         const crumb = document.createElement('button');
-        crumb.className = `whitespace-nowrap px-2 py-1 rounded font-medium transition-colors ${isLast
-            ? 'text-white bg-dark-hover cursor-default'
-            : 'text-gray-500 hover:text-brand-cyan'
+        crumb.className = `whitespace-nowrap px-3.5 py-2 rounded-full font-medium text-[13px] transition-colors ${isLast
+            ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm border border-white/70 dark:border-white/10 cursor-default font-semibold'
+            : 'text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5'
             }`;
         crumb.textContent = part;
 
@@ -1105,13 +1132,13 @@ function formatDate(dateString) {
 
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
-    const bgColors = {
-        success: 'bg-emerald-500',
-        error: 'bg-red-500',
-        info: 'bg-blue-500'
+    const iconColors = {
+        success: 'text-emerald-500',
+        error: 'text-red-500',
+        info: 'text-blue-500'
     };
 
-    toast.className = `toast-enter text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 w-80 ${bgColors[type]}`;
+    toast.className = 'toast-enter glass-panel text-slate-900 dark:text-white px-4 py-3 rounded-2xl shadow-lift flex items-center gap-3 w-80';
 
     const icons = {
         success: 'ph-check-circle',
@@ -1120,9 +1147,9 @@ function showToast(message, type = 'info') {
     };
 
     toast.innerHTML = `
-        <i class="ph-fill ${icons[type]} text-xl"></i>
+        <i class="ph-fill ${icons[type]} ${iconColors[type]} text-xl shrink-0"></i>
         <div class="flex-1 font-medium text-sm break-words">${message}</div>
-        <button class="shrink-0 hover:bg-black/20 p-1 rounded transition-colors" onclick="this.parentElement.remove()">
+        <button class="shrink-0 hover:bg-slate-900/5 dark:hover:bg-white/10 p-1 rounded-full transition-colors" onclick="this.parentElement.remove()">
             <i class="ph ph-x"></i>
         </button>
     `;
@@ -1186,7 +1213,7 @@ function setupEventListeners() {
             // Debounced deep backend search
             searchTimeout = setTimeout(async () => {
                 try {
-                    fileContainer.innerHTML = '<div class="col-span-full flex justify-center py-20 text-gray-500"><div class="animate-spin text-3xl"><i class="ph ph-circle-notch"></i></div><p class="mt-4 text-gray-400">Searching subfolders...</p></div>';
+                    fileContainer.innerHTML = `<div class="col-span-full"><p class="text-sm text-slate-500 dark:text-slate-400 text-center pb-4">Searching subfolders...</p><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-5" aria-hidden="true">${Array.from({ length: 6 }).map(() => `<div class="rounded-card border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card overflow-hidden"><div class="skeleton aspect-[4/3]"></div><div class="p-3 space-y-2"><div class="skeleton h-3.5 rounded-full w-4/5"></div><div class="skeleton h-3 rounded-full w-2/5"></div></div></div>`).join('')}</div></div>`;
 
                     const endpoint = `/api/search${encodeURIComponent(currentPath)}?q=${encodeURIComponent(searchTerm)}`;
                     const res = await fetch(endpoint);
@@ -1230,23 +1257,29 @@ function setupEventListeners() {
         btn.onclick = () => {
             currentView = btn.dataset.view;
             localStorage.setItem('lan-server-view', currentView);
-
-            // Update UI state
-            viewToggles.forEach(t => t.classList.remove('active', 'text-white'));
-            viewToggles.forEach(t => t.classList.add('text-gray-500'));
-
+            // Active look is owned by .view-toggle.active in CSS (works in both themes)
+            viewToggles.forEach(t => t.classList.remove('active'));
             btn.classList.add('active');
-            btn.classList.remove('text-gray-500');
-
             renderFiles();
         };
 
-        // Init active state securely
-        if (btn.dataset.view === currentView) {
-            btn.classList.add('active');
-            btn.classList.remove('text-gray-500');
-        } else {
-            btn.classList.add('text-gray-500');
+        // Init active state
+        btn.classList.toggle('active', btn.dataset.view === currentView);
+    });
+
+    // Keyboard shortcuts (v2.1): Ctrl/Cmd+K focuses search, Esc clears it
+    document.addEventListener('keydown', (e) => {
+        const mod = e.ctrlKey || e.metaKey;
+        if (mod && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            if (searchInput) { searchInput.focus(); searchInput.select(); }
+            return;
+        }
+        if (e.key === 'Escape' && document.activeElement === searchInput) {
+            searchInput.value = '';
+            searchInput.blur();
+            currentFiles = [...baseFolderFiles];
+            renderFiles();
         }
     });
 
@@ -1415,6 +1448,7 @@ function uploadFilesFromFiles(files) {
             if (timeDiff > 0.5) { // update speed every 500ms
                 const bytesDiff = e.loaded - lastLoaded;
                 const speedBps = bytesDiff / timeDiff;
+                window._upSpeed = speedBps;
                 const speedMbps = (speedBps / (1024 * 1024)).toFixed(2);
                 uploadSpeedText.textContent = `${speedMbps} MB/s`;
 
@@ -1422,8 +1456,17 @@ function uploadFilesFromFiles(files) {
                 lastLoaded = e.loaded;
             }
 
-            // Update loaded size txt
+            // Update loaded size txt + ETA (v2.1)
             uploadSizeText.textContent = `${(e.loaded / (1024 * 1024)).toFixed(2)} MB / ${(e.total / (1024 * 1024)).toFixed(2)} MB`;
+            const etaEl = document.getElementById('upload-eta');
+            if (etaEl) {
+                if (window._upSpeed > 0 && e.loaded < e.total) {
+                    const remain = Math.ceil((e.total - e.loaded) / window._upSpeed);
+                    etaEl.textContent = remain > 1 ? `~${formatUptime(remain)} left` : '';
+                } else {
+                    etaEl.textContent = '';
+                }
+            }
         }
     };
 
@@ -1441,6 +1484,8 @@ function uploadFilesFromFiles(files) {
             setTimeout(() => {
                 uploadContainer.classList.add('hidden');
                 uploadContainer.classList.remove('flex');
+                const etaEl = document.getElementById('upload-eta');
+                if (etaEl) etaEl.textContent = '';
                 // reset bar color
                 uploadProgressBar.classList.replace('from-emerald-500', 'from-[#3B82F6]');
                 uploadProgressBar.classList.replace('to-green-500', 'to-[#EC4899]');
