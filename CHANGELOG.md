@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1 — 2026-11-18
+
+### Fixed
+- Server crashed on startup with `Cannot find module 'qrcode'` on existing installs, because `Start-Server.bat` only ran `npm install` when `node_modules` did not exist at all, so the new v2.0 dependency was never installed. The bat file now also runs `npm install` when `node_modules\qrcode` is missing.
+- `qrcode` is now optional in `server/routes/api.js`: if it is missing, the server still starts and `/api/qr` returns 503 with a helpful message (and the QR button shows a toast) instead of crashing the whole server.
+
 ## 2.0.0 — 2026-11-18
 
 Premium v2.0 upgrade.

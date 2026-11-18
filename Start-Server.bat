@@ -12,6 +12,10 @@ if not exist node_modules\ (
     echo [INFO] First run detected. Installing dependencies...
     call npm install
     echo.
+) else if not exist node_modules\qrcode\ (
+    echo [INFO] New dependency detected (qrcode). Installing missing dependencies...
+    call npm install
+    echo.
 )
 
 echo Leave the input blank and press ENTER to use the
