@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.1.0 — 2026-11-18
+
+Modern UI redesign. No API or behaviour changes — all v2.0 features work as before.
+
+### Added
+- Working light/dark theme toggle in the header (sun/moon button, `localStorage`, applied before first paint so there is no flash). Light theme is a first-class blue-white theme (pale-blue surfaces, blue accents, dark slate text); dark theme is deep navy-black with blue/cyan glass.
+- `Ctrl`/`⌘K` focuses search, `Esc` clears it.
+- Folder header row: current folder name, item count, total size, and a live "LAN Active · N online" status pill.
+- Upload ETA ("~2m 10s left") in the upload progress card.
+- `npm run build:css` script (`tailwindcss -i ./src/input.css -o ./server/public/css/style.css`); `@tailwindcss/cli` added as a dev dependency so the CSS can actually be rebuilt (tailwindcss v4 ships no binary).
+
+### Changed
+- **Glassmorphism throughout**: frosted-glass header, cards, toolbar, stats strip, modals, toasts, selection bar and setup card — translucent gradient surfaces, `backdrop-blur`, 1px light borders, soft inner highlights, layered depth. Page backgrounds are lit by soft blue/violet (light) and blue/cyan (dark) glows so the glass has something to refract.
+- **Thumbnails are the hero**: grid cards are dominated by a large 4:3 preview area on top (real `/api/thumb` image/video preview, `object-cover`, size badge, hover play overlay); filename and meta live in a slim strip below. Folders/docs keep a large tinted tile with a big icon.
+- Header is a single slim sticky glass bar: logo, centred pill search, QR / Trash / theme / settings. The big hero and separate search section are gone.
+- Filter chips are a segmented pill control; sort + view toggle are a compact segmented control; Upload is a solid accent pill, New Folder a ghost pill; breadcrumbs are pill crumbs.
+- Selection toolbar is a floating glass pill at the bottom centre.
+- Loading uses skeleton shimmer cards; empty state has a proper illustration-style icon, message and Upload/Clear-search action; error state has a Retry button.
+- Toasts are glass panels that slide in from the right; media modal has a cleaner gradient header and keyboard hints (← → / Esc / Space).
+- Cards have a staggered fade-up entrance, hover lift (-2px) and soft shadow, cyan ring + tint when selected; list rows are 44px glass rows with hairline dividers.
+- Motion respects `prefers-reduced-motion` (entrance/shimmer/hover animations disabled); focus-visible rings added for keyboard users.
+- Tailwind tokens refined: near-black `#0B0D17`, larger radii (20–24px cards), Inter system stack, tighter heading tracking, softer violet `#8B5CF6`.
+
+### Fixed
+- Theme toggle button referenced by `app.js` did not exist in `index.html` — it does now, and `dark:` variants are class-based (`@custom-variant`), so toggling works in both themes.
+- `online-count` element referenced by the stats poller did not exist in `index.html` — it is now in the status pill.
+- View-toggle buttons no longer get hardcoded `text-white`/`text-gray-500` classes from JS — the active look is owned by `.view-toggle.active` in CSS, so it works in the light theme too.
+
 ## 2.0.2 — 2026-11-18
 
 ### Fixed

@@ -39,6 +39,19 @@ A high-speed, fully responsive LAN file server that turns your computer into a p
 
 See [CHANGELOG.md](CHANGELOG.md) for the full list. Screenshot in `screenshots/preview.png` is from v1.x — the v2.0 UI adds the stats strip, selection toolbar, QR/Trash buttons and thumbnails on top of the same layout.
 
+## 🆕 What's new in v2.1 (2026-11-18)
+
+A full UI redesign — same features, modern look:
+
+- **Glassmorphism everywhere** — frosted-glass header, cards, toolbar, stats strip, modals, toasts and selection bar, with soft blue (light) / blue-cyan (dark) glows behind the glass.
+- **Two first-class themes** — a blue-white light theme and a deep navy-black dark theme, switched by the new sun/moon toggle in the header (saved, applied before first paint).
+- **Thumbnails are the hero** — grid cards are dominated by a large 4:3 preview (real thumbnails for images/videos), with the filename and size/date in a slim strip below.
+- **Slimmer header** — logo, centred pill search (press `Ctrl`/`⌘K` to focus), QR / Trash / theme / settings. Folder name, item count, total size and a live "LAN Active" pill replace the old hero.
+- **Better states** — skeleton shimmer loading, a proper empty state, a Retry button on errors, glass toasts, upload ETA, and a floating glass selection bar.
+- **Motion & access** — staggered card entrances, hover lift, `prefers-reduced-motion` support, and visible focus rings.
+
+To rebuild the CSS after editing `src/input.css` or the HTML/JS: `npm run build:css`.
+
 # 🌟 প্রিমিয়াম ল্যান ফাইল এবং মিডিয়া সার্ভার
 
 একটি অতি-দ্রুত এবং রেস্পন্সিভ ল্যান ফাইল সার্ভার যা আপনার কম্পিউটারকে একটি প্রিমিয়াম পার্সোনাল ক্লাউডে পরিণত করে। এটি Node.js, Express এবং চমৎকার TailwindCSS গ্লাস-মর্ফিজম ডিজাইন দিয়ে তৈরি। এটি যেকোনো মাপের ফাইল (এমনকি ১০ জিবি বা তার বেশি!) আপলোড এবং সরাসরি ডাউনলোড সাপোর্ট করে। এতে একটি বিল্ট-ইন মিডিয়া প্লেয়ার রয়েছে যা FFmpeg-এর সাথে সংযুক্ত, যার মাধ্যমে আপনি আপনার ব্রাউজারেই সরাসরি ডুয়াল-অডিও (যেমন- হিন্দি ও ইংরেজি) MKV এবং MP4 মুভি বাফার ছাড়াই স্ট্রিম করতে পারবেন।
