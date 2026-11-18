@@ -89,6 +89,156 @@ let currentMediaIndex = -1;
 let baseFolderFiles = [];
 let searchTimeout;
 
+// ---- v2.0 state & helpers ----
+let selectedPaths = new Set();
+const TEXT_EXTS = ['txt', 'md', 'json', 'js', 'css', 'html', 'htm', 'py', 'xml', 'csv', 'log', 'ts', 'java', 'php', 'sh', 'yml', 'yaml'];
+const THUMB_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mkv', 'avi', 'mov', 'webm'];
+function fullPathFor(file) { return currentPath === '' ? `/${file.name}` : `${currentPath}/${file.name}`; }
+function resumeKey(p) { return 'speed-resume:' + p; }
+function getResume(p) { const v = parseFloat(localStorage.getItem(resumeKey(p))); return Number.isFinite(v) ? v : 0; }
+function saveResume(p, t) { try { if (t > 5) localStorage.setItem(resumeKey(p), String(Math.floor(t))); } catch (e) {} }
+function formatUptime(sec) {
+    sec = sec || 0;
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s2 = sec % 60;
+    return h > 0 ? `${h}h ${m}m` : (m > 0 ? `${m}m ${s2}s` : `${s2}s`);
+}
+function thumbHtml(fullPath, ext, fallbackSvg) {
+    if (!THUMB_EXTS.includes(ext)) return '';
+    const url = `/api/thumb?path=${encodeURIComponent(fullPath)}`;
+    const fallback = fallbackSvg ? `<span class="thumb-fallback" style="display:none;width:100%;height:100%">${fallbackSvg}</span>` : '';
+    return `<img src="${url}" alt="" loading="lazy" class="w-full h-full object-cover rounded-lg" onerror="this.style.display='none';var f=this.nextElementSibling;if(f)f.style.display='block';">${fallback}`;
+}
+window.toggleSelectCheckbox = function (cb) {
+    if (cb.checked) selectedPaths.add(cb.dataset.path);
+    else selectedPaths.delete(cb.dataset.path);
+    updateSelectionToolbar();
+};
+function updateSelectionToolbar() {
+    const bar = document.getElementById('selection-toolbar');
+    const count = document.getElementById('selection-count');
+    if (!bar) return;
+    if (count) count.textContent = selectedPaths.size;
+    bar.classList.toggle('hidden', selectedPaths.size === 0);
+}
+function clearSelection() { selectedPaths.clear(); updateSelectionToolbar(); document.querySelectorAll('.select-checkbox').forEach(c => { c.checked = false; }); }
+async function bulkDownload() {
+    if (selectedPaths.size === 0) return;
+    try {
+        const res = await fetch('/api/download-zip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paths: [...selectedPaths] }) });
+        if (!res.ok) throw new Error('Zip failed');
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = 'selection.zip'; a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        showToast('Bulk download started', 'success');
+    } catch (e) { showToast('Bulk download failed', 'error'); }
+}
+async function bulkDelete() {
+    if (selectedPaths.size === 0) return;
+    if (!confirm(`Move ${selectedPaths.size} item(s) to trash?`)) return;
+    try {
+        const res = await fetch('/api/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paths: [...selectedPaths] }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Delete failed');
+        showToast('Moved to trash', 'success');
+        clearSelection(); loadFiles(currentPath);
+    } catch (e) { showToast(e.message || 'Delete failed', 'error'); }
+}
+async function createFolder() {
+    const name = prompt('New folder name:');
+    if (!name) return;
+    try {
+        const res = await fetch('/api/mkdir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: currentPath || '/', name: name.trim() }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create folder');
+        showToast('Folder created', 'success'); loadFiles(currentPath);
+    } catch (e) { showToast(e.message, 'error'); }
+}
+window.renameItemByPath = async function (fullPath, oldName) {
+    const name = prompt('Rename to:', oldName);
+    if (!name || name === oldName) return;
+    try {
+        const res = await fetch('/api/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: fullPath, newName: name.trim() }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Rename failed');
+        showToast('Renamed', 'success'); loadFiles(currentPath);
+    } catch (e) { showToast(e.message, 'error'); }
+};
+window.deleteItemByPath = async function (fullPath, name) {
+    if (!confirm(`Move "${name}" to trash?`)) return;
+    try {
+        const res = await fetch('/api/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paths: [fullPath] }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Delete failed');
+        showToast('Moved to trash', 'success'); loadFiles(currentPath);
+    } catch (e) { showToast(e.message, 'error'); }
+};
+async function openTrash() {
+    const modal = document.getElementById('trash-modal');
+    const list = document.getElementById('trash-list');
+    if (!modal || !list) return;
+    list.innerHTML = '<p class="text-gray-400 text-sm py-6 text-center">Loading trash...</p>';
+    modal.classList.remove('hidden');
+    try {
+        const res = await fetch('/api/trash');
+        const data = await res.json();
+        const items = data.items || [];
+        if (items.length === 0) { list.innerHTML = '<p class="text-gray-400 text-sm py-6 text-center">Trash is empty</p>'; return; }
+        list.innerHTML = '';
+        items.forEach(it => {
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-3 p-3 rounded-xl bg-dark-bg border border-dark-border';
+            row.innerHTML = `<div class="flex-1 min-w-0"><p class="text-white text-sm font-medium truncate" title="${it.name}">${it.name}</p><p class="text-xs text-gray-400">${it.isDirectory ? 'Folder' : formatBytes(it.size)} &bull; ${formatDate(it.mtime)}</p></div>
+                <button class="bg-brand-cyan/15 text-brand-cyan text-xs font-bold rounded-lg px-3 py-2" data-restore="${it.name.replace(/"/g, '&quot;')}">Restore</button>`;
+            row.querySelector('[data-restore]').onclick = async () => {
+                const r = await fetch('/api/trash/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: it.name }) });
+                const d = await r.json();
+                if (!r.ok) { showToast(d.error || 'Restore failed', 'error'); return; }
+                showToast('Restored: ' + (d.restored || it.name), 'success');
+                openTrash(); loadFiles(currentPath);
+            };
+            list.appendChild(row);
+        });
+    } catch (e) { list.innerHTML = '<p class="text-red-400 text-sm py-6 text-center">Failed to load trash</p>'; }
+}
+async function emptyTrash() {
+    if (!confirm('Permanently delete everything in trash? This cannot be undone.')) return;
+    const res = await fetch('/api/trash/empty', { method: 'POST' });
+    if (res.ok) { showToast('Trash emptied', 'success'); openTrash(); } else showToast('Failed to empty trash', 'error');
+}
+async function showQr() {
+    const modal = document.getElementById('qr-modal');
+    if (!modal) return;
+    try {
+        const res = await fetch('/api/qr');
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        document.getElementById('qr-image').src = data.dataUrl;
+        document.getElementById('qr-url').textContent = data.url;
+        modal.classList.remove('hidden');
+    } catch (e) { showToast('Failed to load QR code', 'error'); }
+}
+function startResumeSaver(filePath) {
+    stopResumeSaver();
+    window._resumeTimer = setInterval(() => {
+        if (window.plyrInstance && window.plyrInstance.currentTime) saveResume(filePath, window.plyrInstance.currentTime);
+    }, 5000);
+}
+function stopResumeSaver() { if (window._resumeTimer) { clearInterval(window._resumeTimer); window._resumeTimer = null; } }
+function applyResume(filePath) {
+    if (!window.plyrInstance) return;
+    const saved = getResume(filePath);
+    const trySeek = () => {
+        const dur = window.plyrInstance.duration;
+        if (saved > 10 && dur && saved < dur * 0.95) {
+            window.plyrInstance.currentTime = saved;
+            showToast('Resumed from ' + formatUptime(Math.floor(saved)), 'info');
+        }
+    };
+    if (window.plyrInstance.duration) trySeek();
+    else window.plyrInstance.once('loadedmetadata', trySeek);
+}
+
 // Global File Type Categories mapping
 const icons = {
     video: ['mp4', 'mkv', 'avi', 'mov', 'webm'],
@@ -110,22 +260,28 @@ async function init() {
 
 // Stats Polling
 function startStatsPolling() {
-    // Poll every 3 seconds
-    setInterval(async () => {
+    // Poll every 5 seconds (v2.0 live stats strip)
+    const poll = async () => {
         try {
             const res = await fetch('/api/stats');
             if (res.ok) {
                 const data = await res.json();
-                if (onlineCountSpan) {
-                    // TCP counts include the idle connections, so we subtract basic connections if we want exact unique user IPs, 
-                    // but for a File server "HITS", raw TCP connections is often accurate enough or cooler looking.
-                    onlineCountSpan.textContent = data.connections || 1;
+                if (onlineCountSpan) onlineCountSpan.textContent = data.connections || 1;
+                const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+                set('stat-connections', data.connections || 1);
+                set('stat-uptime', formatUptime(data.uptimeSeconds || 0));
+                set('stat-downloaded', formatBytes(data.bytesDownloaded || 0));
+                set('stat-uploaded', formatBytes(data.bytesUploaded || 0));
+                if (data.diskFree != null && data.diskTotal) {
+                    set('stat-disk', formatBytes(data.diskFree) + ' free');
+                    const bar = document.getElementById('stat-disk-bar');
+                    if (bar) bar.style.width = Math.round(((data.diskTotal - data.diskFree) / data.diskTotal) * 100) + '%';
                 }
             }
-        } catch (err) {
-            // Silently fail, it will retry next tick
-        }
-    }, 3000);
+        } catch (err) { /* silently retry next tick */ }
+    };
+    poll();
+    setInterval(poll, 5000);
 }
 
 // Theme handling
@@ -279,6 +435,7 @@ async function loadFiles(dirPath) {
         currentPath = data.path;
         currentFiles = data.contents;
         baseFolderFiles = [...data.contents];
+        clearSelection();
 
         // Clear search so the new folder's contents aren't immediately filtered out
         if (searchInput) {
@@ -384,9 +541,11 @@ function renderFiles() {
         if (currentView === 'list') {
             card.className = 'flex items-center gap-3 p-3 rounded-xl bg-dark-card border border-dark-border hover:bg-dark-hover transition-colors cursor-pointer group';
 
+            const thumb = thumbHtml(fullPath, fileExt, '<div class="w-6 h-6">' + svg + '</div>');
             card.innerHTML = `
-                <div class="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center ${colorOnly} bg-dark-bg group-hover:scale-110 transition-transform">
-                    <div class="w-6 h-6">${svg}</div>
+                <label class="shrink-0 flex items-center" onclick="event.stopPropagation()"><input type="checkbox" class="select-checkbox w-4 h-4 accent-cyan-400" data-path="${fullPath.replace(/"/g, '&quot;')}" onchange="toggleSelectCheckbox(this)"></label>
+                <div class="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center ${colorOnly} bg-dark-bg group-hover:scale-110 transition-transform overflow-hidden">
+                    ${thumb ? thumb : `<div class="w-6 h-6">${svg}</div>`}
                 </div>
                 <div class="flex-1 min-w-0">
                     <h3 class="font-medium text-white truncate" title="${file.name}">${file.name}</h3>
@@ -399,6 +558,8 @@ function renderFiles() {
                     ${formattedSize}
                 </div>
                 <div class="w-20 shrink-0 flex flex-row items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                    <button class="w-8 h-8 rounded border border-dark-border text-gray-300 hover:text-white hover:bg-dark-hover flex items-center justify-center transition-colors" title="Rename" onclick="event.stopPropagation(); renameItemByPath('${fullPath.replace(/'/g, "\\'")}', '${file.name.replace(/'/g, "\\'")}')"><i class="ph ph-pencil-simple"></i></button>
+                    <button class="w-8 h-8 rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors" title="Delete to trash" onclick="event.stopPropagation(); deleteItemByPath('${fullPath.replace(/'/g, "\\'")}', '${file.name.replace(/'/g, "\\'")}')"><i class="ph ph-trash"></i></button>
                     ${file.isDirectory ?
                     `<button class="w-8 h-8 rounded border border-dark-border text-gray-300 hover:text-white hover:bg-dark-hover flex items-center justify-center transition-colors" title="Open"><i class="ph ph-arrow-right"></i></button>`
                     :
@@ -433,10 +594,12 @@ function renderFiles() {
             const colorOnly = iconColorClass.split(' ').find(c => c.startsWith('text-')) || 'text-gray-400';
             const glowColor = colorOnly.replace('text-', '');
             
+            const gridThumb = thumbHtml(fullPath, ext, '<div class="w-8 h-8 md:w-10 md:h-10 relative z-10">' + svg + '</div>');
             card.innerHTML = `
+                <label class="absolute top-2 left-2 z-30 bg-black/50 rounded p-1" onclick="event.stopPropagation()"><input type="checkbox" class="select-checkbox w-4 h-4 accent-cyan-400" data-path="${fullPath.replace(/"/g, '&quot;')}" onchange="toggleSelectCheckbox(this)"></label>
                 <!-- Main Icon Box -->
                 <div class="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center mb-3 md:mb-4 ${colorOnly.replace('text-', 'bg-').split(' ')[0]}/10 border border-${glowColor.replace('text-', 'bg-')}/15 ${colorOnly} relative z-10 overflow-hidden">
-                    <div class="w-8 h-8 md:w-10 md:h-10 relative z-10">${svg}</div>
+                    ${gridThumb ? gridThumb : `<div class="w-8 h-8 md:w-10 md:h-10 relative z-10">${svg}</div>`}
                 </div>
                 
                 <!-- File Name Area -->
@@ -458,6 +621,8 @@ function renderFiles() {
                     ${!file.isDirectory ?
                     `<a href="/api/download${fullPath}" download class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-dark-bg/85 border border-white/10 hover:border-brand-cyan hover:text-brand-cyan text-white rounded-lg md:rounded-xl transition-colors font-bold" title="Download directly" onclick="event.stopPropagation()"><i class="ph-bold ph-download-simple text-sm md:text-lg"></i></a>`
                     : ''}
+                    <button class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-dark-bg/85 border border-white/10 hover:border-white text-white rounded-lg md:rounded-xl transition-colors font-bold" title="Rename" onclick="event.stopPropagation(); renameItemByPath('${fullPath.replace(/'/g, "\\'")}', '${file.name.replace(/'/g, "\\'")}')"><i class="ph-bold ph-pencil-simple text-sm md:text-lg"></i></button>
+                    <button class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-dark-bg/85 border border-red-500/30 hover:border-red-500 text-red-400 rounded-lg md:rounded-xl transition-colors font-bold" title="Delete to trash" onclick="event.stopPropagation(); deleteItemByPath('${fullPath.replace(/'/g, "\\'")}', '${file.name.replace(/'/g, "\\'")}')"><i class="ph-bold ph-trash text-sm md:text-lg"></i></button>
                 </div>
             `;
         }
@@ -581,6 +746,20 @@ async function handleFileClick(file, path, ext) {
                 sources.push({ src: `/api/stream-custom${encodeURIComponent(path)}?res=480`, type: 'video/mp4', size: 480 });
             }
 
+            // 2b. Subtitles (v2.0): sibling .srt/.vtt files as Plyr caption tracks
+            let tracks = [];
+            try {
+                const subRes = await fetch(`/api/subtitles?path=${encodeURIComponent(path)}`);
+                const subData = await subRes.json();
+                tracks = (subData.subtitles || []).map((sub, i) => ({
+                    kind: 'captions',
+                    label: sub.label || sub.name,
+                    srclang: 'en',
+                    src: `/api/subtitle-file?path=${encodeURIComponent(sub.path)}`,
+                    default: i === 0
+                }));
+            } catch (e) { /* no subtitles — play without them */ }
+
             // 3. Mount Player HTML
             mediaContainer.innerHTML = `<video id="plyr-video" crossorigin playsinline autoplay></video>`;
             
@@ -604,8 +783,12 @@ async function handleFileClick(file, path, ext) {
             window.plyrInstance.source = {
                 type: 'video',
                 title: file.name,
-                sources: sources
+                sources: sources,
+                tracks: tracks
             };
+            // Resume playback (v2.0): seek to saved position, save every 5s
+            applyResume(path);
+            startResumeSaver(path);
 
             // Inject Custom Audio Selection UI into Plyr Controls if Multiple Tracks Exist
             if (info.audio && info.audio.length > 1) {
@@ -755,6 +938,18 @@ async function handleFileClick(file, path, ext) {
         // Image preview (using download link for raw file since it's just HTTP GET)
         mediaContainer.innerHTML = `<img src="${downloadUrl}" alt="${file.name}">`;
         openModal();
+    } else if (TEXT_EXTS.includes(ext)) {
+        openModal();
+        mediaContainer.innerHTML = '<div class="p-12 text-center text-brand-cyan"><i class="ph ph-circle-notch animate-spin text-4xl mb-4"></i><p>Loading preview...</p></div>';
+        try {
+            const r = await fetch(streamUrl);
+            if (!r.ok) throw new Error('Failed to load file');
+            const text = await r.text();
+            const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            mediaContainer.innerHTML = `<pre class="w-full h-full overflow-auto text-left text-sm text-gray-200 bg-dark-card p-6 whitespace-pre-wrap break-words" style="max-height:100%">${esc}</pre>`;
+        } catch (e) {
+            mediaContainer.innerHTML = '<div class="p-8 text-center text-red-500"><p>Preview failed — try downloading instead.</p></div>';
+        }
     } else if (ext === 'pdf') {
         // PDF preview iframe
         mediaContainer.innerHTML = `<iframe src="${downloadUrl}" class="w-full h-full rounded-lg bg-white" frameborder="0"></iframe>`;
@@ -822,6 +1017,7 @@ function openModal() {
 }
 
 function closeModal() {
+    stopResumeSaver();
     // Stop media playback
     if (window.plyrInstance) {
         window.plyrInstance.pause();
@@ -1060,6 +1256,48 @@ function setupEventListeners() {
         uploadInput.onchange = uploadFiles;
     }
 
+    // v2.0 buttons
+    const newFolderBtn = document.getElementById('new-folder-btn');
+    if (newFolderBtn) newFolderBtn.onclick = createFolder;
+    const qrBtn = document.getElementById('qr-btn');
+    if (qrBtn) qrBtn.onclick = showQr;
+    const qrClose = document.getElementById('qr-close');
+    if (qrClose) qrClose.onclick = () => document.getElementById('qr-modal').classList.add('hidden');
+    const qrModal = document.getElementById('qr-modal');
+    if (qrModal) qrModal.onclick = (e) => { if (e.target === qrModal) qrModal.classList.add('hidden'); };
+    const trashBtn = document.getElementById('trash-btn');
+    if (trashBtn) trashBtn.onclick = openTrash;
+    const trashClose = document.getElementById('trash-close');
+    if (trashClose) trashClose.onclick = () => document.getElementById('trash-modal').classList.add('hidden');
+    const trashModal = document.getElementById('trash-modal');
+    if (trashModal) trashModal.onclick = (e) => { if (e.target === trashModal) trashModal.classList.add('hidden'); };
+    const trashEmptyBtn = document.getElementById('trash-empty-btn');
+    if (trashEmptyBtn) trashEmptyBtn.onclick = emptyTrash;
+    const bulkDl = document.getElementById('bulk-download-btn');
+    if (bulkDl) bulkDl.onclick = bulkDownload;
+    const bulkDel = document.getElementById('bulk-delete-btn');
+    if (bulkDel) bulkDel.onclick = bulkDelete;
+    const selClear = document.getElementById('selection-clear-btn');
+    if (selClear) selClear.onclick = clearSelection;
+
+    // Drag & drop upload (v2.0): drop files onto the file container
+    const dropOverlay = document.getElementById('drop-overlay');
+    let dragDepth = 0;
+    if (fileContainer) {
+        fileContainer.addEventListener('dragenter', (e) => { e.preventDefault(); dragDepth++; if (dropOverlay) dropOverlay.classList.remove('hidden'); });
+        fileContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
+        fileContainer.addEventListener('dragleave', (e) => { e.preventDefault(); dragDepth = Math.max(0, dragDepth - 1); if (dragDepth === 0 && dropOverlay) dropOverlay.classList.add('hidden'); });
+        fileContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragDepth = 0;
+            if (dropOverlay) dropOverlay.classList.add('hidden');
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) uploadFilesFromFiles(e.dataTransfer.files);
+        });
+    }
+    document.addEventListener('dragenter', (e) => { if (e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files')) { dragDepth++; if (dropOverlay) dropOverlay.classList.remove('hidden'); } });
+    document.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (dragDepth === 0 && dropOverlay) dropOverlay.classList.add('hidden'); });
+    document.addEventListener('drop', (e) => { if (dropOverlay) dropOverlay.classList.add('hidden'); });
+
     // Gallery Listeners
     if (mediaPrevBtn) mediaPrevBtn.onclick = (e) => { e.stopPropagation(); showPrevMedia(); };
     if (mediaNextBtn) mediaNextBtn.onclick = (e) => { e.stopPropagation(); showNextMedia(); };
@@ -1127,7 +1365,9 @@ function setupEventListeners() {
 
 // Upload Logic
 function uploadFiles(event) {
-    const files = event.target.files;
+    uploadFilesFromFiles(event.target.files);
+}
+function uploadFilesFromFiles(files) {
     if (!files || files.length === 0) return;
 
     if (activeUploads === 0) {

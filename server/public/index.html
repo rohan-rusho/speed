@@ -140,6 +140,12 @@
 
                     <!-- Right side Actions -->
                     <div class="flex items-center gap-4">
+                        <button id="qr-btn" class="w-10 h-10 rounded-full bg-dark-card border border-dark-border text-gray-400 hover:text-white hover:border-white/20 hover:shadow-lg flex items-center justify-center transition-all" title="Show QR code for LAN address">
+                            <i class="ph-bold ph-qr-code text-xl"></i>
+                        </button>
+                        <button id="trash-btn" class="w-10 h-10 rounded-full bg-dark-card border border-dark-border text-gray-400 hover:text-white hover:border-white/20 hover:shadow-lg flex items-center justify-center transition-all" title="Trash">
+                            <i class="ph-bold ph-trash text-xl"></i>
+                        </button>
                         <button id="settings-toggle" class="w-10 h-10 rounded-full bg-dark-card border border-dark-border text-gray-400 hover:text-white hover:border-white/20 hover:shadow-lg flex items-center justify-center transition-all">
                             <i class="ph-bold ph-gear text-xl"></i>
                         </button>
@@ -164,6 +170,29 @@
                     <input type="text" id="search-input" placeholder="Search files, folders..."
                         class="w-full pl-11 pr-4 py-2.5 bg-dark-card border border-white/10 hover:border-white/20 focus:border-brand-cyan focus:ring-2 focus:ring-brand-cyan/30 rounded-full transition-all text-white placeholder-gray-500 shadow-md outline-none font-medium text-sm text-left">
                 </div>
+            </div>
+        </div>
+
+        <!-- Live stats strip (v2.0) -->
+        <div id="stats-strip" class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+            <div class="bg-dark-card border border-dark-border rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-400">
+                <span><i class="ph-bold ph-users text-brand-cyan"></i> <span id="stat-connections">1</span> connected</span>
+                <span><i class="ph-bold ph-clock text-brand-cyan"></i> Uptime <span id="stat-uptime" class="text-gray-200 font-semibold">0s</span></span>
+                <span><i class="ph-bold ph-download-simple text-brand-cyan"></i> Downloaded <span id="stat-downloaded" class="text-gray-200 font-semibold">0 MB</span></span>
+                <span><i class="ph-bold ph-upload-simple text-brand-cyan"></i> Uploaded <span id="stat-uploaded" class="text-gray-200 font-semibold">0 MB</span></span>
+                <span class="flex items-center gap-2 flex-1 min-w-[160px]"><i class="ph-bold ph-hard-drive text-brand-cyan"></i> Disk free <span id="stat-disk" class="text-gray-200 font-semibold">--</span>
+                    <span class="flex-1 h-2 bg-dark-bg rounded-full overflow-hidden border border-dark-border"><span id="stat-disk-bar" class="block h-full bg-gradient-to-r from-[#3B82F6] to-[#EC4899]" style="width:0%"></span></span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Selection toolbar (v2.0) -->
+        <div id="selection-toolbar" class="hidden max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+            <div class="bg-brand-purple/15 border border-brand-purple/40 rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-3 text-sm">
+                <span class="font-bold text-white"><span id="selection-count">0</span> selected</span>
+                <button id="bulk-download-btn" class="bg-gradient-to-r from-[#3B82F6] to-[#EC4899] text-white text-xs font-bold rounded-lg px-3 py-2 flex items-center gap-1.5"><i class="ph-bold ph-download-simple"></i> Bulk Download (Zip)</button>
+                <button id="bulk-delete-btn" class="bg-red-500/90 hover:bg-red-500 text-white text-xs font-bold rounded-lg px-3 py-2 flex items-center gap-1.5"><i class="ph-bold ph-trash"></i> Delete to Trash</button>
+                <button id="selection-clear-btn" class="bg-dark-card border border-dark-border text-gray-300 text-xs font-bold rounded-lg px-3 py-2">Clear</button>
             </div>
         </div>
 
@@ -193,6 +222,11 @@
                 <div class="flex flex-wrap items-center gap-3 shrink-0">
                     <!-- Hidden File Input -->
                     <input type="file" id="upload-input" class="hidden" multiple>
+
+                    <!-- New Folder Button (v2.0) -->
+                    <button id="new-folder-btn" class="bg-dark-card hover:bg-dark-hover border border-dark-border text-white text-sm font-semibold rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 transition-all cursor-pointer" title="Create a new folder here">
+                        <i class="ph-bold ph-folder-plus text-lg text-brand-cyan"></i> New Folder
+                    </button>
 
                     <!-- Upload Button -->
                     <button id="upload-btn" class="bg-gradient-to-r from-[#3B82F6] via-[#A855F7] to-[#EC4899] hover:opacity-90 active:scale-95 text-white text-sm font-semibold rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 transition-all shadow-lg shadow-brand-purple/20 cursor-pointer border-0" title="Upload files to this directory">
@@ -289,11 +323,44 @@
         </div>
     </div>
 
+    <!-- Drag & drop overlay (v2.0) -->
+    <div id="drop-overlay" class="hidden fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+        <div class="border-2 border-dashed border-brand-cyan rounded-2xl px-10 py-12 text-center bg-dark-card/80">
+            <i class="ph-fill ph-upload-simple text-5xl text-brand-cyan"></i>
+            <p class="text-white font-bold text-lg mt-3">Drop files to upload here</p>
+            <p class="text-gray-400 text-sm">They will be uploaded to the current folder</p>
+        </div>
+    </div>
+
+    <!-- QR Modal (v2.0) -->
+    <div id="qr-modal" class="hidden fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-xs text-center shadow-2xl">
+            <h3 class="text-white font-bold text-lg mb-1">Scan to connect</h3>
+            <p class="text-gray-400 text-sm mb-4">Open this server on your phone / TV</p>
+            <img id="qr-image" alt="QR code" class="w-56 h-56 mx-auto rounded-lg bg-white p-2" />
+            <p id="qr-url" class="text-brand-cyan text-sm font-mono break-all mt-4"></p>
+            <button id="qr-close" class="mt-5 w-full bg-dark-border hover:bg-gray-700 text-white font-semibold py-2 rounded-lg">Close</button>
+        </div>
+    </div>
+
+    <!-- Trash Modal (v2.0) -->
+    <div id="trash-modal" class="hidden fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-white font-bold text-lg flex items-center gap-2"><i class="ph-bold ph-trash text-brand-cyan"></i> Trash</h3>
+                <button id="trash-close" class="w-9 h-9 rounded-full bg-dark-bg border border-dark-border text-gray-300 hover:text-white flex items-center justify-center"><i class="ph-bold ph-x"></i></button>
+            </div>
+            <p class="text-gray-400 text-sm mb-3">Deleted files are kept here — restore them or empty the trash to delete permanently.</p>
+            <div id="trash-list" class="flex flex-col gap-2 max-h-80 overflow-y-auto"></div>
+            <button id="trash-empty-btn" class="mt-4 w-full bg-red-500/90 hover:bg-red-500 text-white font-semibold py-2 rounded-lg">Empty Trash (permanent)</button>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
     <!-- Plyr Custom Video Player JS -->
     <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
-    <script src="js/app.js?v=8"></script>
+    <script src="js/app.js?v=9"></script>
 </body>
 </html>
