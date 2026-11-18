@@ -11,11 +11,18 @@ const ffmpegPath = require('ffmpeg-static');
 const ffprobePath = require('ffprobe-static').path;
 ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
-const QRCode = require('qrcode');
+// qrcode is optional: the server must still start on an existing install
+// where `npm install` hasn't been re-run yet (e.g. after pulling v2.0).
+let QRCode = null;
+try {
+    QRCode = require('qrcode');
+} catch (e) {
+    console.warn('[QR] qrcode module not installed — run `npm install` to enable QR codes.');
+}
 const { getDirectoryContents, searchDirectoryRecursive, resolveSafePath, validateFileName, uniquePath, INTERNAL_DIRS } = require('../utils/fileHandler');
 const { counters, addDownloaded, addUploaded, uptimeSeconds } = require('../utils/counters');
 
-const VERSION = '2.0.0';
+const VERSION = '2.0.1';
 const TRASH_DIR = '.speed-trash';
 const CACHE_DIR = '.speed-cache';
 
@@ -101,8 +108,11 @@ function createApiRouter(getRootDir, opts = {}) {
     });
 
     router.get('/qr', async (req, res) => {
+        const url = getLanUrl(getPort());
+        if (!QRCode) {
+            return res.status(503).json({ error: 'QR codes unavailable — run `npm install` in the server folder, then restart.', url });
+        }
         try {
-            const url = getLanUrl(getPort());
             const dataUrl = await QRCode.toDataURL(url, { width: 256, margin: 1 });
             res.json({ dataUrl, url });
         } catch (e) {
