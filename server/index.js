@@ -29,7 +29,19 @@ function saveConfig(config) {
 
 // Port: config.json port, then env PORT, default 3001.
 const configAtBoot = readConfig();
-const PORT = Number(process.env.PORT || configAtBoot.port || 3001);
+const PORT = Number(process.env.PORT || configAtBoot.port || 3001) || 3001;
+
+// Never die silently: log crashes instead of flashing a stack trace
+// and closing the window before anyone can read it.
+process.on('uncaughtException', (err) => {
+    console.error('\n[Error] Server crashed:', err && err.message ? err.message : err);
+    if (err && err.stack) console.error(err.stack);
+    console.error('[Error] Fix the problem above, then run Start-Server.bat again.\n');
+    process.exit(1);
+});
+process.on('unhandledRejection', (err) => {
+    console.error('\n[Error] Unhandled error:', err && err.message ? err.message : err);
+});
 
 let server = null;
 const getServer = () => server;
@@ -100,7 +112,10 @@ app.use((req, res, next) => {
     }
 });
 
-server = app.listen(PORT, '0.0.0.0', () => {
+// Banner is delayed 500ms and cancelled on error, so a failed start
+// (e.g. port in use) never prints a misleading "Server Running" first.
+let bannerTimer = null;
+function printBanner() {
     const config = readConfig();
     const interfaces = os.networkInterfaces();
     const addresses = [];
@@ -131,4 +146,27 @@ server = app.listen(PORT, '0.0.0.0', () => {
         const { exec } = require('child_process');
         exec(`start http://localhost:${PORT}`);
     } catch(err) {}
+}
+
+server = app.listen(PORT, '0.0.0.0', () => {
+    bannerTimer = setTimeout(() => {
+        if (server.listening) printBanner();
+    }, 500);
+});
+
+// Friendly error if the port is already taken (e.g. an old Speed
+// server is still running in the background) — previously this
+// threw an uncaught EADDRINUSE and the window closed instantly.
+server.on('error', (err) => {
+    if (bannerTimer) clearTimeout(bannerTimer);
+    if (err && err.code === 'EADDRINUSE') {
+        console.error(`\n[Error] Port ${PORT} is already in use.`);
+        console.error('[Error] Another Speed server (or another app) is already running on this port.');
+        console.error('[Error] Close the old server window / stop the old node.exe in Task Manager,');
+        console.error('[Error] or change "port" in server/config.json, then run Start-Server.bat again.\n');
+    } else {
+        console.error('\n[Error] Failed to start server:', err && err.message ? err.message : err);
+        if (err && err.stack) console.error(err.stack);
+    }
+    process.exit(1);
 });
