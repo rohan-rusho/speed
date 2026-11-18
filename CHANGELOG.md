@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.2 — 2026-11-18
+
+### Fixed
+- Server window closed instantly on startup errors with no readable message. Added a friendly `EADDRINUSE` handler in `server/index.js` (port already in use — usually an old Speed server still running) and `uncaughtException` / `unhandledRejection` handlers that print the error instead of a bare stack trace, plus a clear "Server stopped" message in `Start-Server.bat` so the window stays open on the error.
+
 ## 2.0.1 — 2026-11-18
 
 ### Fixed

@@ -32,4 +32,10 @@ if "%FOLDERPATH%"=="" (
     node server/index.js "%FOLDERPATH%"
 )
 
+echo.
+echo [INFO] Server stopped. If it closed right after starting, read the
+echo [INFO] error message above — the most common cause is port 3001
+echo [INFO] already being used by an old server still running.
+echo [INFO] Close the old window, or stop node.exe in Task Manager.
+echo.
 pause
