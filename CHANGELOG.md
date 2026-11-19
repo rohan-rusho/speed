@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.1 — 2026-11-19
+
+### Fixed
+- **Start-Server.bat could open and close instantly without running the server.** The bat file was stored with Unix (LF) line endings, and `cmd.exe` can abort an LF-only batch file while parsing it — before it ever reaches `node`, and before any `pause` can hold the window open. The bat is now stored with Windows (CRLF) line endings, rewritten in a simpler style with no multi-line `if` blocks for `cmd` to trip over, and a new `.gitattributes` rule (`*.bat text eol=crlf`) forces CRLF on every checkout so this can't come back.
+- The bat now also checks port 3001 before starting and stops with a clear warning if another Speed server is already using it, checks that `express` is actually installed (a half-present `node_modules` used to crash straight into "Cannot find module"), and writes every step to `server-start.log` next to the bat — so if it ever fails again, that file says exactly where and why.
+
 ## 2.2.0 — 2026-11-19
 
 Better viewer for photos and videos, and every file type either previews or downloads cleanly.

@@ -1,0 +1,4 @@
+# Force Windows (CRLF) line endings for batch files.
+# cmd.exe can abort an LF-only .bat while parsing it, which looks like
+# "the window opens and closes instantly" - so this must stay CRLF.
+*.bat text eol=crlf
