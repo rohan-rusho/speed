@@ -121,7 +121,7 @@ function plyrVideoOptions() {
         tooltips: { controls: true, seek: true },
         captions: { active: true, language: 'auto', update: true },
         speed: { selected: 1, options: [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 4] },
-        fullscreen: { enabled: true, fallback: 'force', iosNative: true },
+        fullscreen: { enabled: true, fallback: true, iosNative: true },
         loop: { active: false },
         storage: { enabled: true, key: 'speed-plyr' },
         displayDuration: true,
@@ -757,8 +757,10 @@ function renderFiles() {
 
 
 // Wire a rendered card's action buttons via closures (v2.1: no inline escaped paths).
+// (v2.3.1: querySelectorAll — a card has TWO play buttons, the thumbnail overlay and
+// the bottom Play pill; querySelector only wired the first, so the pill did nothing.)
 function bindCardActions(card, file, fullPath, fileExt) {
-    const bind = (sel, fn) => { const el = card.querySelector(sel); if (el) el.onclick = (e) => { e.stopPropagation(); fn(); }; };
+    const bind = (sel, fn) => { card.querySelectorAll(sel).forEach(el => { el.onclick = (e) => { e.stopPropagation(); fn(); }; }); };
     bind('[data-action="rename"]', () => renameItemByPath(fullPath, file.name));
     bind('[data-action="delete"]', () => deleteItemByPath(fullPath, file.name));
     bind('[data-action="play"]', () => {

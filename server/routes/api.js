@@ -22,7 +22,7 @@ try {
 const { getDirectoryContents, searchDirectoryRecursive, resolveSafePath, validateFileName, uniquePath, INTERNAL_DIRS } = require('../utils/fileHandler');
 const { counters, addDownloaded, addUploaded, uptimeSeconds } = require('../utils/counters');
 
-const VERSION = '2.3.0';
+const VERSION = '2.3.1';
 const TRASH_DIR = '.speed-trash';
 const CACHE_DIR = '.speed-cache';
 

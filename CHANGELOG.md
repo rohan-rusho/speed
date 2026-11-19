@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.1 — 2026-11-19
+
+### Fixed
+- **The Play button on grid cards works now.** Each card has two play buttons — the play circle on the thumbnail and the gradient Play pill at the bottom — but only the first one was ever wired up, so tapping the bottom Play pill did nothing (the card's own click handler also ignores taps on buttons). Both buttons now open the file.
+- **Keyboard hints fade away 2s after the viewer opens** instead of sitting over the video — everyone knows the shortcuts by now.
+- **Fullscreen is real fullscreen now.** The player was forced to use its fake CSS fullscreen (`fallback: 'force'`), which just re-pins the player to the window — invisible, since the viewer already fills the screen, so the button looked broken. It now uses the browser's real fullscreen (and still falls back on browsers without it, and native fullscreen on iOS).
+
 ## 2.3.0 — 2026-11-19
 
 ### Fixed
