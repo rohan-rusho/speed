@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.3.2 — 2026-11-19
+
+### Fixed
+- **Clicking a file that was renamed, moved or deleted after the list loaded** no longer opens a dead player. The server now answers 404 for a missing file (instead of a generic 500), and the viewer shows a clear "This file is no longer here" card with a Refresh list button.
+
 ## 2.3.1 — 2026-11-19
 
 ### Fixed

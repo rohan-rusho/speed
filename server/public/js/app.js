@@ -852,6 +852,20 @@ async function handleFileClick(file, path, ext) {
         try {
             // Probe media for audio languages and qualities
             const infoRes = await fetch(`/api/media-info${encodeURIComponent(path)}`);
+            // v2.3.2: the file may have been renamed, moved or deleted after the list
+            // loaded — say so plainly instead of building a player for a missing file.
+            if (infoRes.status === 404) {
+                mediaContainer.innerHTML = `<div class="p-8 text-center">
+                    <i class="ph ph-file-x text-5xl text-red-400 mb-4"></i>
+                    <p class="text-lg font-semibold text-slate-900 dark:text-white mb-1">This file is no longer here</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-5">It may have been renamed, moved or deleted after the list loaded.</p>
+                    <div class="flex items-center justify-center gap-2">
+                        <button onclick="closeModal(); loadFiles(currentPath)" class="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500 to-brand-purple text-white text-sm font-bold">Refresh list</button>
+                        <button onclick="closeModal()" class="px-4 py-2 rounded-full bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white text-sm font-semibold">Close</button>
+                    </div>
+                </div>`;
+                return;
+            }
             const info = await infoRes.json();
 
             if (info.error) throw new Error(info.error);

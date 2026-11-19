@@ -22,7 +22,7 @@ try {
 const { getDirectoryContents, searchDirectoryRecursive, resolveSafePath, validateFileName, uniquePath, INTERNAL_DIRS } = require('../utils/fileHandler');
 const { counters, addDownloaded, addUploaded, uptimeSeconds } = require('../utils/counters');
 
-const VERSION = '2.3.1';
+const VERSION = '2.3.2';
 const TRASH_DIR = '.speed-trash';
 const CACHE_DIR = '.speed-cache';
 
@@ -196,6 +196,9 @@ function createApiRouter(getRootDir, opts = {}) {
             });
         } catch (error) {
             console.error('API /media-info error:', error);
+            // v2.3.2: a file that was renamed, moved or deleted after the list loaded
+            // gets a plain 404 so the viewer can say so instead of a generic error.
+            if (error && error.code === 'ENOENT') return res.status(404).json({ error: 'File not found' });
             res.status(500).json({ error: 'Internal server error while probing media' });
         }
     });
