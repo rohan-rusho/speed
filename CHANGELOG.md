@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.2.0 — 2026-11-19
+
+Better viewer for photos and videos, and every file type either previews or downloads cleanly.
+
+### Added
+- **Image viewer zoom**: zoom in/out buttons with a live % label, Fit and 1:1 buttons, mouse-wheel zoom, drag to pan when zoomed, double-click toggles fit/actual size, keyboard `+` / `-` / `0` while viewing. Zoom resets when you move to the next photo.
+- **Better video controls**: keyboard shortcuts (arrows seek ±10s, `F` fullscreen, `M` mute, `Space` play/pause), 10-second skip, playback speed up to 4x, loop, captions on by default, double-click for fullscreen, and volume/speed remembered between visits.
+- **Audio gets speed control too** (0.25x–4x) plus 10-second skip and remembered volume/speed.
+- **More file types preview**: `.mov`, `.m4v` and `.3gp` videos now play in the browser (probed and streamed like mp4/mkv), `.flac`, `.aac`, `.opus` and `.oga` audio now play, and `.bmp` / `.avif` photos open in the zoom viewer. Text preview covers more code and subtitle files.
+- **Clear message for files the browser can't play** (`.avi`, `.wmv`, `.flv`, `.mpg`, `.tif`, `.heic`, `.wma` and friends): instead of a dead player you get a card explaining it can't be previewed here, with a Download button.
+
+### Changed
+- **Play button only where something plays**: grid cards show Play only for video and audio. Photos show a zoom/view icon and open in the image viewer; other files show an Open icon. The card button reads Play / View / Open to match.
+- `Start-Server.bat` now stops with a clear message if Node.js is missing, and also installs missing dependencies when the CSS build tool (`@tailwindcss/cli`) is absent — so a pull never leaves the install half-done.
+
+### Fixed
+- `.mov` files used to fall through to a plain download; they now play in the video player with the right MIME type.
+
 ## 2.1.0 — 2026-11-18
 
 Modern UI redesign. No API or behaviour changes — all v2.0 features work as before.

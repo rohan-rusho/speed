@@ -8,12 +8,25 @@ echo                 Local File Server
 echo =======================================================
 echo.
 
+where node >nul 2>nul
+if errorlevel 1 (
+    echo [ERROR] Node.js was not found on this PC.
+    echo [ERROR] Install Node.js from https://nodejs.org/ and run this file again.
+    echo.
+    pause
+    exit /b 1
+)
+
 if not exist node_modules\ (
     echo [INFO] First run detected. Installing dependencies...
     call npm install
     echo.
 ) else if not exist node_modules\qrcode\ (
     echo [INFO] New dependency detected (qrcode). Installing missing dependencies...
+    call npm install
+    echo.
+) else if not exist node_modules\@tailwindcss\cli\ (
+    echo [INFO] New dependency detected (@tailwindcss/cli). Installing missing dependencies...
     call npm install
     echo.
 )

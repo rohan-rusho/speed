@@ -91,12 +91,99 @@ let searchTimeout;
 
 // ---- v2.0 state & helpers ----
 let selectedPaths = new Set();
-const TEXT_EXTS = ['txt', 'md', 'json', 'js', 'css', 'html', 'htm', 'py', 'xml', 'csv', 'log', 'ts', 'java', 'php', 'sh', 'yml', 'yaml'];
-const THUMB_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mkv', 'avi', 'mov', 'webm'];
+const TEXT_EXTS = ['txt', 'md', 'json', 'js', 'css', 'html', 'htm', 'py', 'xml', 'csv', 'log', 'ts', 'java', 'php', 'sh', 'yml', 'yaml', 'c', 'cpp', 'h', 'rb', 'go', 'rs', 'sql', 'ini', 'toml', 'srt', 'vtt'];
+const THUMB_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif', 'mp4', 'mkv', 'avi', 'mov', 'webm', 'm4v'];
+// ---- v2.2 file types: every file either previews in the browser or downloads cleanly ----
+const VIDEO_EXTS = ['mp4', 'mkv', 'webm', 'mov', 'm4v', '3gp'];
+const VIDEO_UNPLAYABLE_EXTS = ['avi', 'wmv', 'flv', 'mpg', 'mpeg'];
+const AUDIO_EXTS = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'opus', 'oga'];
+const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'];
+const IMAGE_UNPLAYABLE_EXTS = ['tif', 'tiff', 'heic', 'heif', 'raw', 'psd'];
+// Browser <video> MIME subtype for an extension (mkv/mov need a playable subtype)
+function videoMimeSubtype(ext) {
+    if (ext === 'mkv') return 'webm';
+    if (ext === 'mov' || ext === 'm4v') return 'mp4';
+    if (ext === '3gp') return '3gpp';
+    return ext;
+}
 function fullPathFor(file) { return currentPath === '' ? `/${file.name}` : `${currentPath}/${file.name}`; }
 function resumeKey(p) { return 'speed-resume:' + p; }
 function getResume(p) { const v = parseFloat(localStorage.getItem(resumeKey(p))); return Number.isFinite(v) ? v : 0; }
 function saveResume(p, t) { try { if (t > 5) localStorage.setItem(resumeKey(p), String(Math.floor(t))); } catch (e) {} }
+
+// ---- v2.2 video player: full controls, keyboard shortcuts, remembered settings ----
+function plyrVideoOptions() {
+    return {
+        controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+        settings: ['quality', 'speed', 'loop'],
+        keyboard: { focused: true, global: true },
+        seekTime: 10,
+        tooltips: { controls: true, seek: true },
+        captions: { active: true, language: 'auto', update: true },
+        speed: { selected: 1, options: [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 4] },
+        fullscreen: { enabled: true, fallback: 'force', iosNative: true },
+        loop: { active: false },
+        storage: { enabled: true, key: 'speed-plyr' },
+        displayDuration: true,
+        invertTime: true
+    };
+}
+
+// ---- v2.2 image viewer zoom: buttons, wheel, drag to pan, double-click fit/100% ----
+let imgZoom = { scale: 1, fitScale: 1, x: 0, y: 0, active: false };
+function resetImageZoom() { imgZoom = { scale: 1, fitScale: 1, x: 0, y: 0, active: false }; }
+function imgZoomEl() { return document.getElementById('img-zoom-target'); }
+function imgZoomStage() { return document.getElementById('img-zoom-stage'); }
+function applyImageZoom() {
+    const img = imgZoomEl(); if (!img) return;
+    img.style.transform = `translate(${imgZoom.x}px, ${imgZoom.y}px) scale(${imgZoom.scale})`;
+    const label = document.getElementById('img-zoom-label');
+    if (label) label.textContent = Math.round(imgZoom.scale * 100) + '%';
+}
+function fitImageZoom() {
+    const img = imgZoomEl(), stage = imgZoomStage(); if (!img || !stage || !img.naturalWidth) return;
+    const r = stage.getBoundingClientRect();
+    imgZoom.fitScale = Math.min(r.width / img.naturalWidth, r.height / img.naturalHeight);
+    imgZoom.scale = imgZoom.fitScale; imgZoom.x = 0; imgZoom.y = 0;
+    applyImageZoom();
+}
+function clampImagePan() {
+    const img = imgZoomEl(), stage = imgZoomStage(); if (!img || !stage) return;
+    const r = stage.getBoundingClientRect();
+    const w = img.naturalWidth * imgZoom.scale, h = img.naturalHeight * imgZoom.scale;
+    const maxX = Math.max(0, (w - r.width) / 2), maxY = Math.max(0, (h - r.height) / 2);
+    imgZoom.x = Math.min(maxX, Math.max(-maxX, imgZoom.x));
+    imgZoom.y = Math.min(maxY, Math.max(-maxY, imgZoom.y));
+}
+function setImageZoom(factor) {
+    const img = imgZoomEl(); if (!img) return;
+    imgZoom.scale = Math.min(8, Math.max(0.1, imgZoom.scale * factor));
+    clampImagePan();
+    applyImageZoom();
+}
+function bindImageZoom() {
+    const img = imgZoomEl(), stage = imgZoomStage(); if (!img || !stage) return;
+    imgZoom.active = true;
+    if (img.complete && img.naturalWidth) fitImageZoom();
+    else img.addEventListener('load', fitImageZoom, { once: true });
+    document.getElementById('img-zoom-out').onclick = (e) => { e.stopPropagation(); setImageZoom(1 / 1.25); };
+    document.getElementById('img-zoom-in').onclick = (e) => { e.stopPropagation(); setImageZoom(1.25); };
+    document.getElementById('img-zoom-label').onclick = (e) => { e.stopPropagation(); fitImageZoom(); };
+    document.getElementById('img-zoom-fit').onclick = (e) => { e.stopPropagation(); fitImageZoom(); };
+    document.getElementById('img-zoom-actual').onclick = (e) => { e.stopPropagation(); imgZoom.scale = 1; imgZoom.x = 0; imgZoom.y = 0; applyImageZoom(); };
+    stage.addEventListener('wheel', (e) => { e.preventDefault(); setImageZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); }, { passive: false });
+    stage.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        if (Math.abs(imgZoom.scale - 1) < 0.01) fitImageZoom();
+        else { imgZoom.scale = 1; imgZoom.x = 0; imgZoom.y = 0; applyImageZoom(); }
+    });
+    let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+    stage.addEventListener('pointerdown', (e) => { dragging = true; sx = e.clientX; sy = e.clientY; ox = imgZoom.x; oy = imgZoom.y; try { stage.setPointerCapture(e.pointerId); } catch (_) {} stage.style.cursor = 'grabbing'; });
+    stage.addEventListener('pointermove', (e) => { if (!dragging) return; imgZoom.x = ox + (e.clientX - sx); imgZoom.y = oy + (e.clientY - sy); clampImagePan(); applyImageZoom(); });
+    const endDrag = () => { dragging = false; stage.style.cursor = imgZoom.scale > imgZoom.fitScale + 0.01 ? 'grab' : 'default'; };
+    stage.addEventListener('pointerup', endDrag);
+    stage.addEventListener('pointercancel', endDrag);
+}
 function formatUptime(sec) {
     sec = sec || 0;
     const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s2 = sec % 60;
@@ -241,9 +328,9 @@ function applyResume(filePath) {
 
 // Global File Type Categories mapping
 const icons = {
-    video: ['mp4', 'mkv', 'avi', 'mov', 'webm'],
-    audio: ['mp3', 'wav', 'ogg', 'm4a', 'flac'],
-    image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
+    video: ['mp4', 'mkv', 'avi', 'mov', 'webm', 'm4v', '3gp'],
+    audio: ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'opus', 'oga'],
+    image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'],
     pdf: ['pdf'],
     archive: ['zip', 'rar', '7z', 'tar', 'gz'],
     code: ['js', 'json', 'html', 'css', 'ts', 'py', 'java', 'xml', 'php'],
@@ -615,6 +702,14 @@ function renderFiles() {
 
             // Modern media-style card (v2.1): thumbnail on top, meta below
             const isThumb = THUMB_EXTS.includes(extLower);
+            // v2.2: only video/audio get a Play button — images get a zoom/view icon, the rest an Open icon
+            const isVideoFile = VIDEO_EXTS.includes(extLower) || VIDEO_UNPLAYABLE_EXTS.includes(extLower);
+            const isAudioFile = AUDIO_EXTS.includes(extLower);
+            const isImageFile = IMAGE_EXTS.includes(extLower);
+            const overlayIcon = (isVideoFile || isAudioFile) ? 'ph-play' : (isImageFile ? 'ph-magnifying-glass-plus' : 'ph-arrow-square-out');
+            const overlayTitle = (isVideoFile || isAudioFile) ? 'Play' : (isImageFile ? 'View image' : 'Open');
+            const cardBtnLabel = (isVideoFile || isAudioFile) ? 'Play' : (isImageFile ? 'View' : 'Open');
+            const cardBtnIcon = (isVideoFile || isAudioFile) ? 'ph-play' : (isImageFile ? 'ph-magnifying-glass-plus' : 'ph-arrow-square-out');
             const tileTint = colorOnly.replace('text-', 'bg-').split(' ')[0];
             card.className = `file-card card-enter group/card glass-card relative flex flex-col overflow-hidden rounded-card shadow-card cursor-pointer ${cardClass}`;
             card.style.animationDelay = Math.min(i, 12) * 30 + 'ms';
@@ -624,7 +719,7 @@ function renderFiles() {
                 <div class="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-dark-bg shrink-0">
                     ${gridThumb ? gridThumb : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br ${tileTint}/15 to-transparent ${colorOnly}"><div class="w-12 h-12">${svg}</div></div>`}
                     <span class="absolute top-2 right-2 z-20 rounded-full bg-black/55 backdrop-blur px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">${file.isDirectory ? 'Folder' : (fileExt || 'File')}</span>
-                    ${!file.isDirectory ? `<button data-action="play" class="absolute inset-0 z-10 flex items-center justify-center bg-black/0 group-hover/card:bg-black/30 transition-colors" title="Play / Open" aria-label="Open"><span class="w-12 h-12 rounded-full bg-white/95 text-slate-900 flex items-center justify-center opacity-0 group-hover/card:opacity-100 scale-90 group-hover/card:scale-100 transition-all shadow-xl"><i class="ph-fill ph-play text-xl"></i></span></button>` : ''}
+                    ${!file.isDirectory ? `<button data-action="play" class="absolute inset-0 z-10 flex items-center justify-center bg-black/0 group-hover/card:bg-black/30 transition-colors" title="${overlayTitle}" aria-label="${overlayTitle}"><span class="w-12 h-12 rounded-full bg-white/95 text-slate-900 flex items-center justify-center opacity-0 group-hover/card:opacity-100 scale-90 group-hover/card:scale-100 transition-all shadow-xl"><i class="ph-fill ${overlayIcon} text-xl"></i></span></button>` : ''}
                 </div>
                 <label class="card-checkbox absolute top-2 left-2 z-30 bg-white/90 dark:bg-black/60 backdrop-blur rounded-lg p-1.5 shadow-sm" onclick="event.stopPropagation()"><input type="checkbox" class="select-checkbox w-4 h-4 accent-teal-400 block" data-path="${fullPath.replace(/"/g, '&quot;')}" onchange="toggleSelectCheckbox(this)"></label>
                 <div class="flex flex-1 flex-col gap-0.5 p-3">
@@ -632,7 +727,7 @@ function renderFiles() {
                     <p class="text-xs text-slate-500 dark:text-slate-400">${file.isDirectory ? 'Folder' : formattedSize} &bull; ${dateModified}</p>
                     <div class="mt-auto pt-2 flex items-center gap-1.5">
                         <button data-action="play" class="flex-1 min-h-9 py-2 bg-gradient-to-r from-cyan-500 to-brand-purple hover:opacity-90 text-white rounded-full text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-brand-purple/20 border-0">
-                            ${file.isDirectory ? '<i class="ph-bold ph-folder-open text-sm"></i> Open' : '<i class="ph-bold ph-play text-sm"></i> Play'}
+                            ${file.isDirectory ? '<i class="ph-bold ph-folder-open text-sm"></i> Open' : `<i class="ph-bold ${cardBtnIcon} text-sm"></i> ${cardBtnLabel}`}
                         </button>
                         ${!file.isDirectory ? `<a href="/api/download${fullPath}" download class="w-9 h-9 min-w-9 flex items-center justify-center bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-white rounded-full transition-colors" title="Download"><i class="ph-bold ph-download-simple text-base"></i></a>` : ''}
                         <button data-action="rename" class="w-9 h-9 min-w-9 flex items-center justify-center bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-full transition-colors" title="Rename"><i class="ph-bold ph-pencil-simple text-base"></i></button>
@@ -687,7 +782,7 @@ function getActionButtonsHtml(file, fullPath, ext) {
     let html = '';
 
     // Play button for media
-    if (['mp4', 'mkv', 'webm', 'mp3', 'wav', 'ogg'].includes(ext)) {
+    if ([...VIDEO_EXTS, ...AUDIO_EXTS].includes(ext)) {
         html += `
             <button class="action-btn flex-1 bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/50 p-1.5 rounded text-lg flex items-center justify-center transition-colors" title="Play" onclick="event.stopPropagation(); handleFileClick({name: '${file.name.replace(/'/g, "\\'")}', isDirectory: false}, '${fullPath.replace(/'/g, "\\'")}', '${ext}')">
                 <i class="ph-fill ph-play"></i>
@@ -704,7 +799,7 @@ function getActionButtonsHtml(file, fullPath, ext) {
     `;
 
     // Copy link button
-    const linkUrl = window.location.origin + (['mp4', 'mkv', 'webm', 'mp3', 'wav', 'ogg'].includes(ext) ? streamUrl : downloadUrl);
+    const linkUrl = window.location.origin + ([...VIDEO_EXTS, ...AUDIO_EXTS].includes(ext) ? streamUrl : downloadUrl);
     html += `
         <button class="action-btn flex-1 bg-gray-100 text-gray-700 dark:bg-dark-bg dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 p-1.5 rounded text-lg flex items-center justify-center transition-colors" onclick="copyLink('${linkUrl}')" title="Copy Link">
             <i class="ph-fill ph-link"></i>
@@ -721,15 +816,16 @@ async function handleFileClick(file, path, ext) {
 
     mediaTitle.textContent = file.name;
     mediaDownload.href = downloadUrl;
+    resetImageZoom(); // a photo's zoom never carries over to the next file
 
     // Update Gallery State if media
-    const isMedia = ['mp4', 'mkv', 'webm', 'mp3', 'wav', 'ogg', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+    const isMedia = [...VIDEO_EXTS, ...AUDIO_EXTS, ...IMAGE_EXTS].includes(ext);
     if (isMedia) {
         // Create an array of all media files in the current folder, sorting alphabetically for simplicity
         currentMediaList = currentFiles.filter(f => {
             if (f.isDirectory) return false;
             const fExt = f.name.split('.').pop().toLowerCase();
-            return ['mp4', 'mkv', 'webm', 'mp3', 'wav', 'ogg', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fExt);
+            return [...VIDEO_EXTS, ...AUDIO_EXTS, ...IMAGE_EXTS].includes(fExt);
         }).sort((a, b) => a.name.localeCompare(b.name));
 
         currentMediaIndex = currentMediaList.findIndex(f => f.name === file.name);
@@ -742,7 +838,7 @@ async function handleFileClick(file, path, ext) {
         if (mediaCounter) mediaCounter.classList.add('hidden');
     }
 
-    if (['mp4', 'mkv', 'webm'].includes(ext)) {
+    if (VIDEO_EXTS.includes(ext)) {
         // Show fetching loader in modal
         mediaContainer.innerHTML = `<div class="p-12 text-center text-brand-cyan"><i class="ph ph-circle-notch animate-spin text-4xl mb-4"></i><p>Probing media tracks...</p></div>`;
         openModal();
@@ -760,7 +856,7 @@ async function handleFileClick(file, path, ext) {
             // 1. Add Default Original quality
             sources.push({
                 src: `/api/stream${encodeURIComponent(path)}`,
-                type: `video/${ext === 'mkv' ? 'webm' : ext}`,
+                type: `video/${videoMimeSubtype(ext)}`,
                 size: info.video[0] ? info.video[0].height : 1080
             });
 
@@ -794,8 +890,7 @@ async function handleFileClick(file, path, ext) {
             if (window.plyrInstance) window.plyrInstance.destroy();
             
             window.plyrInstance = new Plyr('#plyr-video', {
-                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
-                settings: ['quality', 'speed', 'loop'],
+                ...plyrVideoOptions(),
                 quality: {
                     default: origHeight,
                     options: sources.map(s => s.size),
@@ -934,13 +1029,13 @@ async function handleFileClick(file, path, ext) {
             console.error(err);
             mediaContainer.innerHTML = `<div class="p-8 text-center text-red-500"><i class="ph ph-warning-circle text-4xl mb-4"></i><p>Failed to load media info. Falling back to default player.</p></div>`;
             setTimeout(() => {
-                mediaContainer.innerHTML = `<video id="plyr-video" crossorigin playsinline autoplay><source src="${streamUrl}" type="video/${ext === 'mkv' ? 'webm' : ext}"></video>`;
-                window.plyrInstance = new Plyr('#plyr-video');
+                mediaContainer.innerHTML = `<video id="plyr-video" crossorigin playsinline autoplay><source src="${streamUrl}" type="video/${videoMimeSubtype(ext)}"></video>`;
+                window.plyrInstance = new Plyr('#plyr-video', plyrVideoOptions());
             }, 1000);
         }
-    } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) {
+    } else if (AUDIO_EXTS.includes(ext)) {
         // Audio player (Plyr UI & space styling)
-        let t = ext === 'm4a' ? 'mp4' : ext;
+        let t = ext === 'm4a' ? 'mp4' : (ext === 'oga' ? 'ogg' : ext);
         mediaContainer.innerHTML = `
             <div class="bg-white dark:bg-dark-card border border-[#523cbd]/30 p-8 rounded-2xl w-full max-w-md flex flex-col items-center shadow-2xl relative overflow-hidden">
                 <!-- Glowing Space Background Bubble -->
@@ -959,12 +1054,34 @@ async function handleFileClick(file, path, ext) {
         // Init Plyr
         if (window.plyrInstance) window.plyrInstance.destroy();
         window.plyrInstance = new Plyr('#plyr-audio', {
-            controls: ['play', 'progress', 'current-time', 'mute', 'volume']
+            controls: ['play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings'],
+            settings: ['speed'],
+            speed: { selected: 1, options: [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 4] },
+            keyboard: { focused: true, global: true },
+            seekTime: 10,
+            tooltips: { controls: true, seek: true },
+            storage: { enabled: true, key: 'speed-plyr' },
+            displayDuration: true
         });
-    } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
-        // Image preview (using download link for raw file since it's just HTTP GET)
-        mediaContainer.innerHTML = `<img src="${downloadUrl}" alt="${file.name}">`;
+    } else if (IMAGE_EXTS.includes(ext)) {
+        // Image viewer (v2.2): zoom controls, mouse-wheel zoom, drag to pan, double-click fit/100%
+        resetImageZoom();
+        mediaContainer.innerHTML = `
+        <div class="w-full h-full flex flex-col items-center justify-center min-h-0 gap-2 p-2 md:p-4">
+            <div class="flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-2 py-1.5 shadow-2xl z-30">
+                <button id="img-zoom-out" class="w-9 h-9 rounded-full text-white hover:bg-white/15 flex items-center justify-center transition-colors" title="Zoom out (-)" aria-label="Zoom out"><i class="ph-bold ph-minus text-lg"></i></button>
+                <button id="img-zoom-label" class="min-w-14 px-1 text-sm font-bold text-white text-center" title="Click to fit to screen">100%</button>
+                <button id="img-zoom-in" class="w-9 h-9 rounded-full text-white hover:bg-white/15 flex items-center justify-center transition-colors" title="Zoom in (+)" aria-label="Zoom in"><i class="ph-bold ph-plus text-lg"></i></button>
+                <span class="w-px h-6 bg-white/15 mx-0.5"></span>
+                <button id="img-zoom-fit" class="h-9 px-3 rounded-full text-white hover:bg-white/15 text-xs font-bold transition-colors" title="Fit to screen (0)">Fit</button>
+                <button id="img-zoom-actual" class="h-9 px-3 rounded-full text-white hover:bg-white/15 text-xs font-bold transition-colors" title="Actual size 100%">1:1</button>
+            </div>
+            <div id="img-zoom-stage" class="flex-1 w-full min-h-0 overflow-hidden flex items-center justify-center relative" style="touch-action: none;">
+                <img id="img-zoom-target" src="${downloadUrl}" alt="${file.name}" draggable="false" class="max-w-none select-none" style="transform-origin: center center; will-change: transform;">
+            </div>
+        </div>`;
         openModal();
+        bindImageZoom();
     } else if (TEXT_EXTS.includes(ext)) {
         openModal();
         mediaContainer.innerHTML = '<div class="p-12 text-center text-brand-cyan"><i class="ph ph-circle-notch animate-spin text-4xl mb-4"></i><p>Loading preview...</p></div>';
@@ -981,6 +1098,21 @@ async function handleFileClick(file, path, ext) {
         // PDF preview iframe
         mediaContainer.innerHTML = `<iframe src="${downloadUrl}" class="w-full h-full rounded-lg bg-white" frameborder="0"></iframe>`;
         openModal();
+    } else if ([...VIDEO_UNPLAYABLE_EXTS, ...IMAGE_UNPLAYABLE_EXTS, 'wma'].includes(ext)) {
+        // Can't be previewed in a browser (old video codecs, raw/TIFF/HEIC photos, WMA) —
+        // say so clearly instead of opening a dead player, and offer the download.
+        mediaContainer.innerHTML = `
+        <div class="bg-white dark:bg-dark-card border border-white/10 rounded-3xl p-8 md:p-10 max-w-md w-full text-center shadow-2xl">
+            <div class="w-20 h-20 mx-auto rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-4xl text-slate-400 dark:text-slate-300 mb-5"><i class="ph-fill ph-file"></i></div>
+            <h3 class="font-bold text-lg text-slate-900 dark:text-white mb-2 truncate">${file.name}</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">This file type can't be previewed in the browser. Download it to open it on your PC.</p>
+            <div class="flex gap-2 justify-center">
+                <a href="${downloadUrl}" download class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-brand-purple text-white rounded-full text-sm font-bold shadow-md hover:opacity-90">Download</a>
+                <button id="unsupported-close" class="px-5 py-2.5 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white rounded-full text-sm font-bold hover:bg-slate-200 dark:hover:bg-white/20">Close</button>
+            </div>
+        </div>`;
+        openModal();
+        document.getElementById('unsupported-close').onclick = () => closeModal();
     } else {
         // Default to download
         window.location.href = downloadUrl;
@@ -1045,6 +1177,7 @@ function openModal() {
 
 function closeModal() {
     stopResumeSaver();
+    resetImageZoom();
     // Stop media playback
     if (window.plyrInstance) {
         window.plyrInstance.pause();
@@ -1089,9 +1222,9 @@ function getFileIcon(isDirectory, ext) {
     
     // 2. Media / Standard types
     const icons = {
-        video: ['mp4', 'mkv', 'avi', 'mov', 'webm'],
-        audio: ['mp3', 'wav', 'ogg', 'm4a', 'flac'],
-        image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
+        video: ['mp4', 'mkv', 'avi', 'mov', 'webm', 'm4v', '3gp'],
+        audio: ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'opus', 'oga'],
+        image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'],
         pdf: ['pdf'],
         archive: ['zip', 'rar', '7z', 'tar', 'gz'],
         code: ['js', 'json', 'html', 'css', 'ts', 'py', 'java', 'xml', 'php'],
@@ -1342,7 +1475,12 @@ function setupEventListeners() {
                 return;
             }
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            
+
+            // Image viewer zoom keys (v2.2): + zoom in, - zoom out, 0 fit to screen
+            if (imgZoom.active && (e.key === '+' || e.key === '=')) { setImageZoom(1.25); return; }
+            if (imgZoom.active && e.key === '-') { setImageZoom(1 / 1.25); return; }
+            if (imgZoom.active && e.key === '0') { fitImageZoom(); return; }
+
             // If playing video/audio, let plyr use Arrow keys for seek/volume
             if (window.plyrInstance && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) return;
 
@@ -1358,6 +1496,9 @@ function setupEventListeners() {
             
             // Prevent clicks on explicit buttons/links
             if (e.target.closest('button, a')) return;
+
+            // Image viewer handles its own clicks (zoom/drag) — don't navigate away
+            if (e.target.closest('#img-zoom-stage')) return;
 
             const rect = mediaContainer.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
@@ -1386,6 +1527,8 @@ function setupEventListeners() {
 
     function handleSwipe() {
         if (mediaModal.classList.contains('hidden')) return;
+        // A zoomed-in image pans with the finger instead of switching files
+        if (imgZoom.active && imgZoom.scale > imgZoom.fitScale + 0.01) return;
         const swipeThreshold = 50;
         if (touchEndX < touchStartX - swipeThreshold) {
             showNextMedia(); // Swiped Left -> Next

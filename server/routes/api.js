@@ -22,7 +22,7 @@ try {
 const { getDirectoryContents, searchDirectoryRecursive, resolveSafePath, validateFileName, uniquePath, INTERNAL_DIRS } = require('../utils/fileHandler');
 const { counters, addDownloaded, addUploaded, uptimeSeconds } = require('../utils/counters');
 
-const VERSION = '2.1.0';
+const VERSION = '2.2.0';
 const TRASH_DIR = '.speed-trash';
 const CACHE_DIR = '.speed-cache';
 
@@ -209,7 +209,7 @@ function createApiRouter(getRootDir, opts = {}) {
             const stats = await fs.promises.stat(filePath);
             if (!stats.isFile()) return res.status(404).json({ error: 'Not a file' });
             const ext = path.extname(filePath).toLowerCase();
-            const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'].includes(ext);
+            const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg', '.avif'].includes(ext);
             const isVideo = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v'].includes(ext);
             if (!isImage && !isVideo) return res.status(404).json({ error: 'No thumbnail for this type' });
             const cacheDir = path.join(rootDir, CACHE_DIR, 'thumbs');
