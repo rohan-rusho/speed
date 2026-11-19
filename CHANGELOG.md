@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.2 — 2026-11-19
+
+### Changed
+- The keyboard hints pill (← → navigate, Esc close, Space play/pause, + − zoom) moved from the bottom of the viewer to the top, just under the header, so it never covers the player controls or the seek bar.
+
 ## 2.2.1 — 2026-11-19
 
 ### Fixed
