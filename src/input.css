@@ -282,3 +282,124 @@ audio {
         transform: none;
     }
 }
+
+/* ---- Speed Player (v2.3): a modern glass video & audio player ----
+   Plyr's own stylesheet loads before this file, so these rules win.
+   Cyan-to-violet accent to match the app, frosted-glass controls. */
+#media-container .plyr {
+    --plyr-color-main: #22d3ee;
+    --plyr-video-control-color: #ffffff;
+    --plyr-video-control-color-hover: #ffffff;
+    --plyr-video-control-background-hover: rgba(255, 255, 255, 0.14);
+    --plyr-audio-control-color: #ffffff;
+    --plyr-audio-control-background-hover: rgba(255, 255, 255, 0.14);
+    --plyr-range-track-height: 5px;
+    --plyr-range-thumb-height: 14px;
+    --plyr-range-thumb-width: 14px;
+    --plyr-control-radius: 12px;
+    --plyr-font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    --plyr-video-progress-buffered-background: rgba(255, 255, 255, 0.28);
+    --plyr-range-fill-background: linear-gradient(90deg, #22d3ee, #8b5cf6);
+    --plyr-tooltip-background: rgba(10, 10, 18, 0.88);
+    --plyr-tooltip-color: #ffffff;
+    --plyr-menu-background: rgba(12, 12, 22, 0.92);
+    --plyr-menu-color: #e2e8f0;
+    --plyr-menu-border-color: rgba(255, 255, 255, 0.12);
+    --plyr-video-background: #000000;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+/* Rounded video frame (not in fullscreen) */
+#media-container .plyr__video-wrapper {
+    border-radius: 20px;
+    background: #000;
+}
+/* Floating glass control bar */
+#media-container .plyr__controls {
+    margin: 0 14px 14px;
+    border-radius: 18px;
+    background: rgba(8, 8, 16, 0.55);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    backdrop-filter: blur(18px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    padding: 4px 10px 6px;
+}
+/* In fullscreen the bar stretches edge to edge */
+#media-container .plyr--fullscreen .plyr__controls,
+#media-container .plyr--fullscreen-fallback .plyr__controls {
+    margin: 0 18px 18px;
+}
+/* Progress bar: gradient fill, glowing white thumb */
+#media-container .plyr--full-ui input[type="range"]::-webkit-slider-thumb {
+    background: #fff;
+    border: 0;
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35), 0 2px 8px rgba(0, 0, 0, 0.5);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+#media-container .plyr--full-ui input[type="range"]::-moz-range-thumb {
+    background: #fff;
+    border: 0;
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35), 0 2px 8px rgba(0, 0, 0, 0.5);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+#media-container .plyr--full-ui input[type="range"]:hover::-webkit-slider-thumb,
+#media-container .plyr--full-ui input[type="range"]:active::-webkit-slider-thumb {
+    transform: scale(1.25);
+    box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.4), 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+#media-container .plyr--full-ui input[type="range"]:hover::-moz-range-thumb,
+#media-container .plyr--full-ui input[type="range"]:active::-moz-range-thumb {
+    transform: scale(1.25);
+    box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.4), 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+/* Big centre play button: frosted glass with a cyan ring */
+#media-container .plyr__control--overlaid {
+    background: rgba(8, 8, 16, 0.55);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.18), 0 16px 40px rgba(0, 0, 0, 0.55);
+    color: #fff;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+#media-container .plyr__control--overlaid:hover {
+    background: rgba(34, 211, 238, 0.9);
+    transform: scale(1.06);
+    box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.25), 0 16px 44px rgba(0, 0, 0, 0.6);
+}
+/* Control buttons: soft rounding, tidy time readouts */
+#media-container .plyr__control {
+    border-radius: 10px;
+}
+#media-container .plyr__time {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.85);
+}
+/* Active toggle (captions on, etc.) reads cyan */
+#media-container .plyr__control[aria-pressed="true"] {
+    color: #22d3ee;
+}
+/* Settings / quality / speed menus: dark glass cards */
+#media-container .plyr__menu__container {
+    background: rgba(12, 12, 22, 0.92);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    backdrop-filter: blur(18px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+}
+#media-container .plyr__menu__container .plyr__control[role="menuitemradio"][aria-checked="true"] {
+    color: #22d3ee;
+}
+#media-container .plyr__menu__container .plyr__control[role="menuitemradio"][aria-checked="true"]::before {
+    background: #22d3ee;
+}
+/* Tooltips: dark pills */
+#media-container .plyr__tooltip {
+    border-radius: 999px;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}

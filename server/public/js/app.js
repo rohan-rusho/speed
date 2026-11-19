@@ -305,10 +305,13 @@ async function showQr() {
         modal.classList.remove('hidden');
     } catch (e) { showToast('Failed to load QR code', 'error'); }
 }
+// After a language switch through the transcoded stream, the player's clock restarts
+// at the switch point — this offset keeps the saved resume position in real file time.
+let resumeOffsetSeconds = 0;
 function startResumeSaver(filePath) {
     stopResumeSaver();
     window._resumeTimer = setInterval(() => {
-        if (window.plyrInstance && window.plyrInstance.currentTime) saveResume(filePath, window.plyrInstance.currentTime);
+        if (window.plyrInstance && window.plyrInstance.currentTime) saveResume(filePath, resumeOffsetSeconds + window.plyrInstance.currentTime);
     }, 5000);
 }
 function stopResumeSaver() { if (window._resumeTimer) { clearInterval(window._resumeTimer); window._resumeTimer = null; } }
@@ -817,6 +820,7 @@ async function handleFileClick(file, path, ext) {
     mediaTitle.textContent = file.name;
     mediaDownload.href = downloadUrl;
     resetImageZoom(); // a photo's zoom never carries over to the next file
+    resumeOffsetSeconds = 0; // a new file starts its own timeline
 
     // Update Gallery State if media
     const isMedia = [...VIDEO_EXTS, ...AUDIO_EXTS, ...IMAGE_EXTS].includes(ext);
@@ -913,116 +917,139 @@ async function handleFileClick(file, path, ext) {
             startResumeSaver(path);
 
             // Inject Custom Audio Selection UI into Plyr Controls if Multiple Tracks Exist
-            if (info.audio && info.audio.length > 1) {
-                window.plyrInstance.once('ready', () => {
-                    // Small delay to ensure DOM is fully rendered by Plyr
-                    setTimeout(() => {
-                        const controls = window.document.querySelector('.plyr__controls');
-                        if (!controls) return;
-                        // Find the core container for the Plymouth popup interface
-                        const settingsPopupContainer = controls.querySelector('.plyr__menu__container > div');
-                        const mainSettingsMenu = settingsPopupContainer ? settingsPopupContainer.firstElementChild : null;
-                        
-                        if (!mainSettingsMenu) return;
+            // (v2.3: a function now, because Plyr rebuilds its controls on every source
+            // change — the Audio row must be put back after a language switch.)
+            const injectAudioMenu = () => {
+                if (document.getElementById('current-audio-label')) return; // already there
+                const controls = window.document.querySelector('.plyr__controls');
+                if (!controls) return;
+                // Find the core container for the Plymouth popup interface
+                const settingsPopupContainer = controls.querySelector('.plyr__menu__container > div');
+                const mainSettingsMenu = settingsPopupContainer ? settingsPopupContainer.firstElementChild : null;
 
-                        // Identify the current track label
-                        const firstTrackName = (info.audio[0].language && info.audio[0].language !== 'und') ? info.audio[0].language : 'Track 1';
-                        
-                        // 1. Create a native-looking row button inside the main settings menu panel
-                        const audioRowBtn = document.createElement('button');
-                        audioRowBtn.type = 'button';
-                        audioRowBtn.className = 'plyr__control plyr__control--forward';
-                        audioRowBtn.setAttribute('aria-haspopup', 'true');
-                        audioRowBtn.setAttribute('aria-controls', 'plyr-settings-audio-menu');
-                        audioRowBtn.innerHTML = `
-                            <span>Audio</span>
-                            <span class="plyr__menu__value" id="current-audio-label">${firstTrackName.toUpperCase()}</span>
-                        `;
-                        
-                        // Append it to the main settings panel
-                        mainSettingsMenu.appendChild(audioRowBtn);
-                        
-                        // 2. Build the Sub-Menu Panel explicitly mimicking Plymouth standard format
-                        const audioSubMenu = document.createElement('div');
-                        audioSubMenu.id = 'plyr-settings-audio-menu';
-                        audioSubMenu.hidden = true; // Hidden until navigated to
-                        
-                        audioSubMenu.innerHTML = `
-                            <button type="button" class="plyr__control plyr__control--back" id="plyr-audio-back">
-                                <span class="plyr__sr-only">Go back</span>
-                                <span aria-hidden="true">Audio</span>
-                            </button>
-                            <div role="menu">
-                                ${info.audio.map((track, i) => {
-                                    const trackName = (track.language && track.language !== 'und' ? track.language : `Track ${i+1}`).toUpperCase();
-                                    return `
-                                    <button type="button" role="menuitemradio" class="plyr__control" aria-checked="${i === 0 ? 'true' : 'false'}" data-audio-id="${track.customId}">
-                                        <span>${trackName} <span style="font-size: 0.7em; opacity: 0.6;">(${track.codec})</span></span>
-                                    </button>`;
-                                }).join('')}
-                            </div>
-                        `;
-                        
-                        // Append sub-menu layer directly inside the Plymouth structure alongside 'Speed' or 'Quality' subpanels
-                        settingsPopupContainer.appendChild(audioSubMenu);
-                        
-                        // 3. Handle Navigation smoothly simulating Plymouth slides
-                        audioRowBtn.onclick = (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            mainSettingsMenu.hidden = true;
-                            audioSubMenu.hidden = false;
-                        };
-                        
-                        document.getElementById('plyr-audio-back').onclick = (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            audioSubMenu.hidden = true;
-                            mainSettingsMenu.hidden = false;
-                        };
-                        
-                        // The track selector logic is handled below
+                if (!mainSettingsMenu) return;
 
-                        // Handle Audio Track Change Request
-                        audioSubMenu.querySelectorAll('[data-audio-id]').forEach(btn => {
-                            btn.onclick = async (e) => {
-                                e.stopPropagation();
-                                const audioIdx = btn.dataset.audioId;
-                                const currentTime = window.plyrInstance.currentTime;
-                                
-                                // Visual feedback update inside the sub-menu checkboxes
-                                audioSubMenu.querySelectorAll('[data-audio-id]').forEach(b => b.setAttribute('aria-checked', 'false'));
-                                btn.setAttribute('aria-checked', 'true');
-                                
-                                // Update main row label
-                                const newLabel = btn.querySelector('span').textContent.split(' (')[0].trim();
-                                document.getElementById('current-audio-label').textContent = newLabel;
-                                
-                                // Slide back to main menu instantly
-                                audioSubMenu.hidden = true;
-                                mainSettingsMenu.hidden = false;
-                                
-                                // Reboot player with custom FFmpeg mapped stream and time skip
-                                window.plyrInstance.source = {
-                                    type: 'video',
-                                    sources: [{
-                                        src: `/api/stream-custom${encodeURIComponent(path)}?audio=${audioIdx}&time=${Math.floor(currentTime)}`,
-                                        type: 'video/mp4',
-                                        size: origHeight
-                                    }]
-                                };
-                                
-                                // Call play directly. Play promises resolve when buffering permits it.
-                                setTimeout(() => {
-                                    const playPromise = window.plyrInstance.play();
-                                    if (playPromise !== undefined) {
-                                        playPromise.catch(error => console.log('Autoplay prevented:', error));
-                                    }
-                                }, 200);
-                            };
+                // Identify the current track label
+                const firstTrackName = (info.audio[0].language && info.audio[0].language !== 'und') ? info.audio[0].language : 'Track 1';
+
+                // 1. Create a native-looking row button inside the main settings menu panel
+                const audioRowBtn = document.createElement('button');
+                audioRowBtn.type = 'button';
+                audioRowBtn.className = 'plyr__control plyr__control--forward';
+                audioRowBtn.setAttribute('aria-haspopup', 'true');
+                audioRowBtn.setAttribute('aria-controls', 'plyr-settings-audio-menu');
+                audioRowBtn.innerHTML = `
+                    <span>Audio</span>
+                    <span class="plyr__menu__value" id="current-audio-label">${firstTrackName.toUpperCase()}</span>
+                `;
+
+                // Append it to the main settings panel
+                mainSettingsMenu.appendChild(audioRowBtn);
+
+                // 2. Build the Sub-Menu Panel explicitly mimicking Plymouth standard format
+                const audioSubMenu = document.createElement('div');
+                audioSubMenu.id = 'plyr-settings-audio-menu';
+                audioSubMenu.hidden = true; // Hidden until navigated to
+
+                audioSubMenu.innerHTML = `
+                    <button type="button" class="plyr__control plyr__control--back" id="plyr-audio-back">
+                        <span class="plyr__sr-only">Go back</span>
+                        <span aria-hidden="true">Audio</span>
+                    </button>
+                    <div role="menu">
+                        ${info.audio.map((track, i) => {
+                            const trackName = (track.language && track.language !== 'und' ? track.language : `Track ${i+1}`).toUpperCase();
+                            return `
+                            <button type="button" role="menuitemradio" class="plyr__control" aria-checked="${i === 0 ? 'true' : 'false'}" data-audio-id="${track.customId}">
+                                <span>${trackName} <span style="font-size: 0.7em; opacity: 0.6;">(${track.codec})</span></span>
+                            </button>`;
+                        }).join('')}
+                    </div>
+                `;
+
+                // Append sub-menu layer directly inside the Plymouth structure alongside 'Speed' or 'Quality' subpanels
+                settingsPopupContainer.appendChild(audioSubMenu);
+
+                // 3. Handle Navigation smoothly simulating Plymouth slides
+                audioRowBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    mainSettingsMenu.hidden = true;
+                    audioSubMenu.hidden = false;
+                };
+
+                document.getElementById('plyr-audio-back').onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    audioSubMenu.hidden = true;
+                    mainSettingsMenu.hidden = false;
+                };
+
+                // The track selector logic is handled below
+
+                // Handle Audio Track Change Request
+                audioSubMenu.querySelectorAll('[data-audio-id]').forEach(btn => {
+                    btn.onclick = async (e) => {
+                        e.stopPropagation();
+                        const audioIdx = btn.dataset.audioId;
+                        const currentTime = window.plyrInstance.currentTime;
+
+                        // Visual feedback update inside the sub-menu checkboxes
+                        audioSubMenu.querySelectorAll('[data-audio-id]').forEach(b => b.setAttribute('aria-checked', 'false'));
+                        btn.setAttribute('aria-checked', 'true');
+
+                        // Update main row label
+                        const newLabel = btn.querySelector('span').textContent.split(' (')[0].trim();
+                        document.getElementById('current-audio-label').textContent = newLabel;
+
+                        // Slide back to main menu instantly
+                        audioSubMenu.hidden = true;
+                        mainSettingsMenu.hidden = false;
+
+                        // v2.3: try the browser's native audio-track switch first — instant,
+                        // keeps time, duration and seeking (Chrome/Edge/Safari).
+                        const mediaEl = window.plyrInstance && window.plyrInstance.media;
+                        const wantTrack = Number(audioIdx);
+                        if (mediaEl && mediaEl.audioTracks && mediaEl.audioTracks.length > 1 && wantTrack < mediaEl.audioTracks.length) {
+                            for (let i = 0; i < mediaEl.audioTracks.length; i++) mediaEl.audioTracks[i].enabled = (i === wantTrack);
+                            showToast('Audio: ' + newLabel, 'success');
+                            return;
+                        }
+                        // Fallback (Firefox, or files whose tracks the browser won't expose):
+                        // reboot with the FFmpeg-mapped stream. Plyr rebuilds its controls on
+                        // a source change, so the Audio row is put back afterwards. The new
+                        // stream's clock starts at the switch point, so remember the offset —
+                        // otherwise resume would save the wrong position.
+                        stopResumeSaver();
+                        resumeOffsetSeconds = Math.floor(currentTime);
+                        window.plyrInstance.source = {
+                            type: 'video',
+                            title: file.name,
+                            sources: [{
+                                src: `/api/stream-custom${encodeURIComponent(path)}?audio=${audioIdx}&time=${Math.floor(currentTime)}`,
+                                type: 'video/mp4',
+                                size: origHeight
+                            }],
+                            tracks: tracks
+                        };
+                        showToast('Audio: ' + newLabel, 'success');
+                        window.plyrInstance.once('loadedmetadata', () => {
+                            startResumeSaver(path);
+                            setTimeout(injectAudioMenu, 100);
                         });
-                    }, 100); // Close setTimeout
+
+                        // Call play directly. Play promises resolve when buffering permits it.
+                        setTimeout(() => {
+                            const playPromise = window.plyrInstance.play();
+                            if (playPromise !== undefined) {
+                                playPromise.catch(error => console.log('Autoplay prevented:', error));
+                            }
+                        }, 200);
+                    };
                 });
+            };
+            if (info.audio && info.audio.length > 1) {
+                window.plyrInstance.once('ready', () => setTimeout(injectAudioMenu, 100));
             }
 
         } catch (err) {
@@ -1177,6 +1204,7 @@ function openModal() {
 
 function closeModal() {
     stopResumeSaver();
+    resumeOffsetSeconds = 0;
     resetImageZoom();
     // Stop media playback
     if (window.plyrInstance) {

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.3.0 — 2026-11-19
+
+### Fixed
+- **Language switching actually works now.** The root cause was on the server: every `/api/stream-custom` request (language switch, 720p/480p quality) was being swallowed by the plain `/stream` route and answered 404 "File not found", so picking another language just blacked out the player. Two fixes: the path middleware now strips `stream-custom` before `stream`, and the `/stream` route no longer matches `/stream-custom` URLs. Verified with a dual-audio test file: `audio=0` serves the English track, `audio=1` serves the Hindi track, and `time=` resumes from the right place.
+- Switching language no longer loses the Audio menu: Plyr rebuilds its controls on every source change, so the Audio row is now re-injected after a switch. Resume position is also kept honest (the transcoded stream's clock restarts at the switch point, so an offset is remembered), and subtitles survive a switch.
+
+### Changed
+- **Language switch is now instant in Chrome/Edge/Safari:** the player first tries the browser's native audio-track switch, so the language changes in place with no reload, no time jump, and seeking still works. Firefox (and files whose tracks the browser won't expose) still use the transcoded stream.
+- **Modern player look:** floating frosted-glass control bar, cyan-to-violet gradient progress bar with a glowing thumb, glass centre play button with a cyan ring, dark glass settings menus, and tidy tabular time readouts.
+
 ## 2.2.2 — 2026-11-19
 
 ### Changed

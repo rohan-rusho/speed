@@ -22,7 +22,7 @@ try {
 const { getDirectoryContents, searchDirectoryRecursive, resolveSafePath, validateFileName, uniquePath, INTERNAL_DIRS } = require('../utils/fileHandler');
 const { counters, addDownloaded, addUploaded, uptimeSeconds } = require('../utils/counters');
 
-const VERSION = '2.2.2';
+const VERSION = '2.3.0';
 const TRASH_DIR = '.speed-trash';
 const CACHE_DIR = '.speed-cache';
 
@@ -70,7 +70,7 @@ function createApiRouter(getRootDir, opts = {}) {
             return res.status(400).json({ error: 'Root directory not configured' });
         }
         try {
-            req.requestedPath = decodeURIComponent(req.path.replace(/^\/(files|stream|download|upload|search|media-info|stream-custom|thumb|subtitles|subtitle-file)/, '') || '/');
+            req.requestedPath = decodeURIComponent(req.path.replace(/^\/(files|stream-custom|stream|download|upload|search|media-info|thumb|subtitle-file|subtitles)/, '') || '/');
             req.fullPath = resolveSafePath(rootDir, req.requestedPath);
             next();
         } catch (err) {
@@ -454,8 +454,8 @@ function createApiRouter(getRootDir, opts = {}) {
             stream.on('error', (streamErr) => { console.error(`Stream error for ${filePath}:`, streamErr); res.end(); });
         });
     }
-    router.get(/^\/stream(.*)$/, serveStream);
-    router.head(/^\/stream(.*)$/, serveStream);
+    router.get(/^\/stream(?!-custom)(.*)$/, serveStream);
+    router.head(/^\/stream(?!-custom)(.*)$/, serveStream);
 
     // Custom FFmpeg Live Transcoding Stream (unchanged behaviour)
     router.get(/^\/stream-custom(.*)$/, async (req, res) => {
